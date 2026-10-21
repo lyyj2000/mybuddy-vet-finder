@@ -1,0 +1,71 @@
+name: Nightly Vet Map Update
+
+on:
+  schedule:
+    - cron: "0 19 * * *"
+      timezone: "Asia/Singapore"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install dependencies
+        run: pip install openpyxl
+
+      - name: 🗺️ Run build_map.py
+        id: build
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("build_map.py")
+          src = p.read_text()
+          src = src.replace(
+              'GOOGLE_API_KEY = "PASTE_YOUR_NEW_API_KEY_HERE"',
+              f'GOOGLE_API_KEY = "{__import__("os").environ["GOOGLE_API_KEY"]}"'
+          )
+          p.write_text(src)
+          PY
+          python build_map.py 2>&1 | tee build.log
+
+      - name: 🚦 Fail if price data regressed
+        run: |
+          LINE=$(grep -oP 'Clinics with prices: \K\d+' build.log || echo "0")
+          if [ "$LINE" -lt 1 ]; then
+            echo "::error::No clinics have prices — something broke in VET_PRICES."
+            exit 1
+          fi
+
+      - name: 🚦 Fail if species data regressed
+        run: |
+          LINE=$(grep -oP 'Clinics with species tags: \K\d+' build.log || echo "0")
+          if [ "$LINE" -lt 1 ]; then
+            echo "::error::No clinics have species tags — VET_SERVICES may be missing."
+            exit 1
+          fi
+
+      - name: 🚀 Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: "."
+          command: |
+            pages deploy . \
+              --project-name=mybuddy-vet-finder \
+              --branch=main \
+              --commit-dirty=true
