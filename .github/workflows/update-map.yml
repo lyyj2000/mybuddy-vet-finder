@@ -42,19 +42,20 @@ jobs:
           PY
           python build_map.py 2>&1 | tee build.log
 
-      - name: 🚦 Fail if price data regressed
+      # UPDATED GUARDRAILS TO MATCH NEW SCRIPT OUTPUT
+      - name: 🚦 Fail if vet data is missing
         run: |
-          LINE=$(grep -oP 'Clinics with prices: \K\d+' build.log || echo "0")
+          LINE=$(grep -oP '\[COUNT\] Vets: \K\d+' build.log || echo "0")
           if [ "$LINE" -lt 1 ]; then
-            echo "::error::No clinics have prices — something broke in VET_PRICES."
+            echo "::error::No Vets found — something broke in MASTER_LIST."
             exit 1
           fi
 
-      - name: 🚦 Fail if species data regressed
+      - name: 🚦 Fail if place data is missing
         run: |
-          LINE=$(grep -oP 'Clinics with species tags: \K\d+' build.log || echo "0")
+          LINE=$(grep -oP '\[COUNT\] Groomers: \K\d+' build.log || echo "0")
           if [ "$LINE" -lt 1 ]; then
-            echo "::error::No clinics have species tags — VET_SERVICES may be missing."
+            echo "::error::No Groomers found — something broke in PET_PLACES."
             exit 1
           fi
 
