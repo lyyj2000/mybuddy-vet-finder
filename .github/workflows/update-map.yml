@@ -42,7 +42,7 @@ jobs:
           PY
           python build_map.py 2>&1 | tee build.log
 
-      # UPDATED GUARDRAILS TO MATCH NEW SCRIPT OUTPUT
+      # THE NEW SAFETY CHECKS
       - name: 🚦 Fail if vet data is missing
         run: |
           LINE=$(grep -oP '\[COUNT\] Vets: \K\d+' build.log || echo "0")
