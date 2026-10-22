@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V26 - RADIUS FOR DINING & FIXED MOBILE)
+# build_map.py  —  MyBuddy Pet Finder (V28 - GOOGLE REVIEWS & MENU LINK)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -178,7 +178,7 @@ def geocode_location(postal, address, name, cache):
     return None
 
 def fetch_google_data(name, address, postal):
-    if GOOGLE_API_KEY == "PASTE_YOUR_NEW_API_KEY_HERE": return None, None, None, None
+    if GOOGLE_API_KEY == "PASTE_YOUR_NEW_API_KEY_HERE": return None, None, None, None, None
     queries = [f"{name} {postal} Singapore", f"{name} Singapore", f"{postal} Singapore", f"{address} Singapore"]
     for q in queries:
         if not q.strip() or q.strip() == "Singapore": continue
@@ -191,9 +191,10 @@ def fetch_google_data(name, address, postal):
                     first = data["results"][0]
                     loc = first.get("geometry", {}).get("location", {})
                     if loc.get("lat") and loc.get("lng"):
-                        return first.get("rating", 0), first.get("user_ratings_total", 0), loc.get("lat"), loc.get("lng")
+                        return (first.get("rating", 0), first.get("user_ratings_total", 0), 
+                                loc.get("lat"), loc.get("lng"), first.get("place_id", ""))
         except Exception: pass
-    return None, None, None, None
+    return None, None, None, None, None
 
 def write_pwa_files():
     manifest = {
@@ -272,7 +273,7 @@ def build():
             "lat": None, "lng": None, "rating": r.get("Google Rating") or 0,
             "review_count": r.get("Review Count") or 0, "is_appt": is_appt,
             "prices": prices_by_id.get(mbv, []), "species": species_by_id.get(mbv, []),
-            "hours_text": ""
+            "hours_text": "", "place_id": ""
         })
 
     # 2. PROCESS PLACES
@@ -303,7 +304,8 @@ def build():
             "phone": str(p.get("Phone") or "").strip(), "whatsapp": "", "booking": "",
             "ecat": "", "schedule": {}, "house_call": False, "hospice": False,
             "lat": lat_val, "lng": lng_val, "rating": rating_val, "review_count": 0, "is_appt": False,
-            "prices": [], "species": [], "hours_text": str(p.get("Operating Hours") or "").strip()
+            "prices": [], "species": [], "hours_text": str(p.get("Operating Hours") or "").strip(),
+            "place_id": ""
         })
 
     cache = {}
@@ -315,13 +317,15 @@ def build():
         if c["id"] in MANUAL_COORDS:
             c["lat"], c["lng"] = MANUAL_COORDS[c["id"]]
             if c["category"] in ["Vet", "Restaurant"]:
-                live_rating, live_reviews, _, _ = fetch_google_data(c['name'], c['address'], c['postal'])
+                live_rating, live_reviews, _, _, place_id = fetch_google_data(c['name'], c['address'], c['postal'])
                 if live_rating is not None:
                     c["rating"] = live_rating; c["review_count"] = live_reviews or 0
+                    c["place_id"] = place_id or ""
         else:
-            live_rating, live_reviews, g_lat, g_lng = fetch_google_data(c['name'], c['address'], c['postal'])
+            live_rating, live_reviews, g_lat, g_lng, place_id = fetch_google_data(c['name'], c['address'], c['postal'])
             if live_rating is not None:
                 c["rating"] = live_rating; c["review_count"] = live_reviews or 0
+                c["place_id"] = place_id or ""
             if g_lat and g_lng:
                 c["lat"], c["lng"] = g_lat, g_lng
             if c["lat"] is None or c["lng"] is None:
@@ -452,7 +456,17 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
   
   #mobile-radius-slider { display: block; position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); left: 12px; right: 12px; z-index: 2500; background: rgba(255,255,255,0.95); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,.2); padding: 10px 16px; }
   #mobile-radius-slider input { width: 100%; accent-color: #4CAF50; }
-  
+
+  #mobile-dir-dropdown { display: none; position: absolute; top: 52px; left: 0; right: 0; background: #fff; border-radius: 16px; box-shadow: 0 8px 25px rgba(0,0,0,.2); max-height: 65vh; overflow-y: auto; z-index: 2600; }
+  #mobile-dir-dropdown.open { display: block; }
+  .md-letter { padding: 12px 16px; font-weight: 800; font-size: 15px; color: #388E3C; background: #F9FBF9; border-bottom: 1px solid #EEE; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .md-letter::after { content: "+"; font-size: 18px; color: #90A4AE; }
+  .md-letter.open::after { content: "−"; }
+  .md-items { display: none; }
+  .md-letter.open + .md-items { display: block; }
+  .md-item { padding: 14px 16px 14px 24px; border-bottom: 1px solid #F1F5F9; font-weight: 600; font-size: 14px; color: #2C3E50; cursor: pointer; }
+  .md-item:active { background: #E8F5E9; }
+
   .leaflet-control-zoom { display: none !important; }
   .leaflet-popup-content-wrapper { border-radius: 20px !important; }
   .leaflet-popup-content { margin: 14px 16px !important; }
@@ -633,6 +647,12 @@ function popupHTML(c, st) {
     
     let txtColor = (c.category === "Restaurant") ? "#000" : (c.category === "Groomer" ? "#000" : "#fff");
 
+    // ADDED: Google Maps Deep Link for Restaurants
+    let googleLinkHTML = "";
+    if (c.category === "Restaurant" && c.place_id) {
+        googleLinkHTML = `<a class="btn-link" href="https://www.google.com/maps/place/?q=place_id:${c.place_id}" target="_blank" rel="noopener" style="background:#4285F4; margin-top:8px; width:100%;">📖 Read Reviews & Menu</a>`;
+    }
+
     return `<div class="popup">
       <h3>${esc(c.name)}</h3>
       <span class="badge" style="background:${badgeColor}; color:${txtColor}; ${c.category === 'Restaurant' ? 'border: 1px solid #000;' : ''}">${esc(c.category === "Park" ? "Park" : (c.category === "Mall" ? "Pet Mall" : (c.category === "Restaurant" ? "Dine with Pets" : c.category)))}</span>
@@ -642,6 +662,7 @@ function popupHTML(c, st) {
       ${directionsHTML}
       <div style="margin-top:10px; border-top:2px dashed #EEE; padding-top:10px;">
         ${phoneHTML}
+        ${googleLinkHTML}
       </div>
     </div>`;
   }
@@ -722,7 +743,6 @@ function updateVisibility() {
        if (c.rating < currentRating) show = false;
     }
     
-    // Radius applies to Vets, Groomers, and Restaurants (Dining)
     if (show && !isEmergency && !hasSearch && (currentCategory === "Vet" || currentCategory === "Groomer" || currentCategory === "Restaurant")) {
       show = map.distance(centre, m.marker.getLatLng()) <= radius;
     }
@@ -784,7 +804,6 @@ document.querySelectorAll('.cat-btn').forEach(b => {
     
     document.getElementById("species-filters").style.display = isVet ? "flex" : "none";
     
-    // Radius slider now shows for Vets, Groomers, AND Dining
     const showRadius = isVet || isGroomer || isDining;
     document.getElementById("radius-row").style.display = showRadius ? "flex" : "none";
     if (document.getElementById("mobile-radius-slider")) {
@@ -827,13 +846,12 @@ document.getElementById("radius").addEventListener("input", e => {
   updateVisibility();
 });
 
-// FIXED: Connect the mobile radius slider!
 const mobileRadiusInput = document.getElementById("mobile-radius-input");
 if (mobileRadiusInput) {
     mobileRadiusInput.addEventListener("input", e => {
         const km = parseFloat(e.target.value);
         centreCircle.setRadius(km * 1000);
-        document.getElementById("radius").value = km; // Sync with desktop slider
+        document.getElementById("radius").value = km; 
         document.getElementById("radiusVal").textContent = km.toFixed(1) + " km";
         updateVisibility();
     });
@@ -876,6 +894,64 @@ searchInput.addEventListener("input", () => {
   openDirectory();
 });
 document.addEventListener("click", e => { if (!e.target.closest(".search-wrap")) closeDirectory(); });
+
+function buildMobileDropdown(filter = "") {
+    const mDropdown = document.getElementById('mobile-dir-dropdown');
+    const q = filter.toLowerCase();
+    mDropdown.innerHTML = "";
+    
+    const letters = Object.keys(DATA.directory).sort();
+    letters.forEach(letter => {
+        const clinics = DATA.directory[letter].filter(c => 
+            c.name.toLowerCase().includes(q) && (currentCategory === "All" || c.category === currentCategory)
+        );
+        if (clinics.length === 0) return;
+
+        const header = document.createElement('div');
+        header.className = 'md-letter';
+        header.textContent = `${letter} (${clinics.length})`;
+        
+        const list = document.createElement('div');
+        list.className = 'md-items';
+
+        header.onclick = () => {
+            header.classList.toggle('open');
+        };
+
+        clinics.forEach(c => {
+            const item = document.createElement('div');
+            item.className = 'md-item';
+            item.textContent = c.name;
+            item.onclick = () => {
+                document.getElementById('mobile-search-input').value = c.name;
+                mDropdown.classList.remove('open');
+                selectClinic(c.id);
+            };
+            list.appendChild(item);
+        });
+
+        mDropdown.appendChild(header);
+        mDropdown.appendChild(list);
+    });
+}
+
+const mobileSearchInput = document.getElementById("mobile-search-input");
+const mobileDropdown = document.getElementById("mobile-dir-dropdown");
+
+if (mobileSearchInput && mobileDropdown) {
+    mobileSearchInput.addEventListener("focus", () => {
+        buildMobileDropdown(mobileSearchInput.value);
+        mobileDropdown.classList.add("open");
+    });
+    mobileSearchInput.addEventListener("input", () => {
+        buildMobileDropdown(mobileSearchInput.value);
+    });
+    document.addEventListener("click", e => {
+        if (!e.target.closest(".m-search-wrap")) {
+            mobileDropdown.classList.remove("open");
+        }
+    });
+}
 
 function clearSearch() { searchInput.value = ""; searchText = ""; selectedId = null; updateVisibility(); }
 function selectClinic(id, opts) {
