@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V28 - GOOGLE REVIEWS & MENU LINK)
+# build_map.py  —  MyBuddy Pet Finder (V29 - GUARANTEED GOOGLE LINKS)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -647,10 +647,16 @@ function popupHTML(c, st) {
     
     let txtColor = (c.category === "Restaurant") ? "#000" : (c.category === "Groomer" ? "#000" : "#fff");
 
-    // ADDED: Google Maps Deep Link for Restaurants
     let googleLinkHTML = "";
-    if (c.category === "Restaurant" && c.place_id) {
-        googleLinkHTML = `<a class="btn-link" href="https://www.google.com/maps/place/?q=place_id:${c.place_id}" target="_blank" rel="noopener" style="background:#4285F4; margin-top:8px; width:100%;">📖 Read Reviews & Menu</a>`;
+    if (c.category === "Restaurant") {
+        let gUrl = "";
+        if (c.place_id) {
+            gUrl = `https://www.google.com/maps/place/?q=place_id:${c.place_id}`;
+        } else {
+            const query = encodeURIComponent(`${c.name} ${c.address} Singapore`);
+            gUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+        }
+        googleLinkHTML = `<a class="btn-link" href="${gUrl}" target="_blank" rel="noopener" style="background:#4285F4; margin-top:8px; width:100%;">📖 Read Reviews & Menu</a>`;
     }
 
     return `<div class="popup">
