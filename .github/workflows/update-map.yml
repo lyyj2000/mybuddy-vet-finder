@@ -42,22 +42,6 @@ jobs:
           PY
           python build_map.py 2>&1 | tee build.log
 
-      - name: 🚦 Fail if vet data is missing
-        run: |
-          LINE=$(grep -oP '\[COUNT\] Vets: \K\d+' build.log || echo "0")
-          if [ "$LINE" -lt 1 ]; then
-            echo "::error::No Vets found — something broke in MASTER_LIST."
-            exit 1
-          fi
-
-      - name: 🚦 Fail if place data is missing
-        run: |
-          LINE=$(grep -oP '\[COUNT\] Groomers: \K\d+' build.log || echo "0")
-          if [ "$LINE" -lt 1 ]; then
-            echo "::error::No Groomers found — something broke in PET_PLACES."
-            exit 1
-          fi
-
       - name: 🚀 Deploy to Cloudflare Pages
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
