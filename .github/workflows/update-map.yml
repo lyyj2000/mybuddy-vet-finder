@@ -42,7 +42,6 @@ jobs:
           PY
           python build_map.py 2>&1 | tee build.log
 
-      # THE NEW SAFETY CHECKS
       - name: 🚦 Fail if vet data is missing
         run: |
           LINE=$(grep -oP '\[COUNT\] Vets: \K\d+' build.log || echo "0")
@@ -64,7 +63,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          npx wrangler@3 pages deploy . \
+          mkdir -p dist
+          cp index.html manifest.json icon.svg dist/
+          npx wrangler@3 pages deploy dist \
             --project-name=mybuddy-vet-finder \
             --branch=main \
             --commit-dirty=true
