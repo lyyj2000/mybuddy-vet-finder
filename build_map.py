@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V20 - DEBUGGING PARKS & MALLS)
+# build_map.py  —  MyBuddy Pet Finder (V24 - STANDARDISED ICONS)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -10,15 +10,15 @@ WORKBOOK_VETS = "MyBuddy_Vet_Finder_MASTER_RECONCILED_2026-10-15_v9.xlsx"
 WORKBOOK_PLACES = "PET_PLACES.xlsx"
 WORKBOOK_REST = "Pets_places rest.xlsx"
 
-OUTPUT   = "mybuddy-vet-map-v3.html"
+OUTPUT   = "index.html"
 CACHE_FILE = Path(__file__).parent / "geocache.json"
 MANIFEST_OUTPUT = "manifest.json"
 ICON_OUTPUT     = "icon.svg"
 
-# ADD YOUR GOOGLE API KEY HERE
+# SAFE FOR GITHUB UPLOAD (The GitHub Robot will inject the real key)
 GOOGLE_API_KEY = "PASTE_YOUR_NEW_API_KEY_HERE"
 
-for old in ["mybuddy-vet-map.html", "mybuddy-vet-map-v2.html"]:
+for old in ["mybuddy-vet-map.html", "mybuddy-vet-map-v2.html", "mybuddy-vet-map-v3.html"]:
     old_file = Path(__file__).parent / old
     if old_file.exists():
         old_file.unlink()
@@ -29,29 +29,18 @@ DAY_ALIASES = {"mon":"Monday","monday":"Monday","tue":"Tuesday","tues":"Tuesday"
 POSTAL_FALLBACKS = { "563338": "560338" }
 EMERGENCY_OVERRIDES = { "MBV-0005", "MBV-0032" }
 
-# EXACT COORDINATES FOR YOUR SPECIFIC PARKS AND MALLS
 MANUAL_COORDS = { 
-    "MBV-0005": (1.3244, 103.9418),
-    "MBV-0032": (1.3286, 103.8521),
-    # Parks
-    "PLC-105": (1.3622, 103.8475), # Bishan-Ang Mo Kio Park
-    "PLC-106": (1.2901, 103.7622), # West Coast Park
-    "PLC-107": (1.3008, 103.9124), # East Coast Park
-    "PLC-108": (1.2860, 103.8236), # Tiong Bahru Park
-    "PLC-109": (1.4647, 103.8336), # Sembawang Park
-    # Malls
-    "PLC-110": (1.3115, 103.7955), # One Holland Village
-    "PLC-111": (1.3506, 103.8721), # Nex Mall
-    "PLC-112": (1.3065, 103.7885), # The Star Vista
-    "PLC-113": (1.2644, 103.8223), # VivoCity
-    "PLC-114": (1.3054, 103.8294), # Palais Renaissance
+    "MBV-0005": (1.3244, 103.9418), "MBV-0032": (1.3286, 103.8521),
+    "PLC-105": (1.3622, 103.8475), "PLC-106": (1.2901, 103.7622),
+    "PLC-107": (1.3008, 103.9124), "PLC-108": (1.2860, 103.8236),
+    "PLC-109": (1.4647, 103.8336), "PLC-110": (1.3115, 103.7955),
+    "PLC-111": (1.3506, 103.8721), "PLC-112": (1.3065, 103.7885),
+    "PLC-113": (1.2644, 103.8223), "PLC-114": (1.3054, 103.8294),
 }
 
 SPECIES_OVERRIDES = {}
-
 SPECIES_ALIASES = {
-    "dog":    ["dog", "canine"],
-    "cat":    ["cat", "feline"],
+    "dog":    ["dog", "canine"], "cat":    ["cat", "feline"],
     "bird":   ["bird", "avian", "parrot"],
     "exotic": ["exotic", "rabbit", "small", "reptile", "pocket", "hamster", "guinea"],
 }
@@ -81,8 +70,7 @@ def parse_intervals(text):
     if re.match(r"^closed\b", t): return []
     if re.search(r"\b(open\s+)?24\s*hours?\b", t) or "24/7" in t: return [(0, 1440)]
     ranges = re.findall(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*(?:[\u2013\u2014\-]|to)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)", t, re.I)
-    if not ranges:
-        return [] if re.search(r"\bclosed\b", t) else None
+    if not ranges: return [] if re.search(r"\bclosed\b", t) else None
     intervals = []
     for a, b in ranges:
         sa = parse_time(a); sb = parse_time(b)
@@ -123,18 +111,14 @@ def extract_day_schedule(full_text, target_day):
                 rest = chunk[ds.end():].strip()
                 if rest: result.append(rest)
             continue
-        if current_days is None or target_day in current_days:
-            result.append(chunk)
+        if current_days is None or target_day in current_days: result.append(chunk)
     return "; ".join(result)
 
 def read_sheet(wb, name_or_index):
     try:
-        if isinstance(name_or_index, int):
-            ws = wb.worksheets[name_or_index]
-        else:
-            ws = wb[name_or_index]
-    except KeyError:
-        return []
+        if isinstance(name_or_index, int): ws = wb.worksheets[name_or_index]
+        else: ws = wb[name_or_index]
+    except KeyError: return []
     rows = list(ws.iter_rows(values_only=True))
     if not rows: return []
     headers = [str(h).strip() if h is not None else f"col{i}" for i, h in enumerate(rows[0])]
@@ -151,7 +135,6 @@ def extract_species_tags(services_data):
     headers = list(services_data[0].keys())
     has_species_col = any(str(h).strip().lower() == "species" for h in headers)
     wide_cols = [(h, _species_from_text(h)) for h in headers if _species_from_text(h)]
-
     for r in services_data:
         mbv = str(r.get("MyBuddy Vet ID") or "").strip()
         if not mbv: continue
@@ -173,8 +156,7 @@ def _query_onemap(q):
         for p in (data.get("results") or []):
             try:
                 lat = float(p["LATITUDE"]); lng = float(p["LONGITUDE"])
-                if 1.1 <= lat <= 1.5 and 103.5 <= lng <= 104.2:
-                    return (lat, lng)
+                if 1.1 <= lat <= 1.5 and 103.5 <= lng <= 104.2: return (lat, lng)
             except (KeyError, ValueError): continue
     except Exception: pass
     return None
@@ -182,35 +164,22 @@ def _query_onemap(q):
 def geocode_location(postal, address, name, cache):
     key = f"{postal}|{address}|{name}"
     if key in cache: return cache[key]
-    
     queries = []
-    if postal and len(str(postal).strip()) == 6:
-        queries.append(str(postal).strip())
-    if name:
-        queries.append(f"{name} Singapore")
+    if postal and len(str(postal).strip()) == 6: queries.append(str(postal).strip())
+    if name: queries.append(f"{name} Singapore")
     if address:
         clean_addr = str(address).replace('\n', ' ').strip()
         queries.append(f"{clean_addr} Singapore")
-
     for q in queries:
         coords = _query_onemap(q)
         if coords:
             cache[key] = coords
             return coords
-            
     return None
 
-# --- GOOGLE MAPS API FOR ACCURATE GEOCODING & RATINGS ---
 def fetch_google_data(name, address, postal):
     if GOOGLE_API_KEY == "PASTE_YOUR_NEW_API_KEY_HERE": return None, None, None, None
-    
-    queries = [
-        f"{name} {postal} Singapore",
-        f"{name} Singapore",
-        f"{postal} Singapore",
-        f"{address} Singapore"
-    ]
-    
+    queries = [f"{name} {postal} Singapore", f"{name} Singapore", f"{postal} Singapore", f"{address} Singapore"]
     for q in queries:
         if not q.strip() or q.strip() == "Singapore": continue
         url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={urllib.parse.quote(q)}&key={GOOGLE_API_KEY}"
@@ -223,14 +192,13 @@ def fetch_google_data(name, address, postal):
                     loc = first.get("geometry", {}).get("location", {})
                     if loc.get("lat") and loc.get("lng"):
                         return first.get("rating", 0), first.get("user_ratings_total", 0), loc.get("lat"), loc.get("lng")
-        except Exception:
-            pass
+        except Exception: pass
     return None, None, None, None
 
 def write_pwa_files():
     manifest = {
         "name": "MyBuddy Pet Finder", "short_name": "Pet Finder",
-        "start_url": "./mybuddy-vet-map-v3.html", "scope": "./",
+        "start_url": "./index.html", "scope": "./",
         "display": "standalone", "orientation": "portrait",
         "background_color": "#ffffff", "theme_color": "#4CAF50",
         "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
@@ -251,24 +219,19 @@ def build():
     try:
         wb_places = load_workbook(WORKBOOK_PLACES, data_only=True)
         places_data.extend(read_sheet(wb_places, 0))
-    except Exception as e:
-        print(f"Warning: Could not load {WORKBOOK_PLACES} - {e}")
-
+    except Exception as e: print(f"Warning: Could not load {WORKBOOK_PLACES} - {e}")
     try:
         wb_rest = load_workbook(WORKBOOK_REST, data_only=True)
         places_data.extend(read_sheet(wb_rest, 0))
-    except Exception as e:
-        print(f"Warning: Could not load {WORKBOOK_REST} - {e}")
+    except Exception as e: print(f"Warning: Could not load {WORKBOOK_REST} - {e}")
 
     hours_by_id = {r["MyBuddy Vet ID"]: r for r in hours if r.get("MyBuddy Vet ID")}
-
     prices_by_id = {}
     for p in prices_data:
         mbv = str(p.get("MyBuddy Vet ID") or "").strip()
         if not mbv: continue
         service = p.get("Service"); price = p.get("Price")
-        if service and price not in (None, ""):
-            prices_by_id.setdefault(mbv, []).append(f"{service}: ${price}")
+        if service and price not in (None, ""): prices_by_id.setdefault(mbv, []).append(f"{service}: ${price}")
 
     species_by_id = extract_species_tags(services_data)
     for _id, _sp in SPECIES_OVERRIDES.items():
@@ -281,8 +244,7 @@ def build():
         groups.setdefault(gid, []).append({"id": r.get("MBV ID"), "name": r.get("Branch Name") or ""})
     siblings = {}
     for gid, members in groups.items():
-        for m in members:
-            siblings[m["id"]] = [x for x in members if x["id"] != m["id"]]
+        for m in members: siblings[m["id"]] = [x for x in members if x["id"] != m["id"]]
 
     clinics = []
     
@@ -294,16 +256,12 @@ def build():
         postal = str(int(r.get("Postal Code"))) if isinstance(r.get("Postal Code"), (int, float)) else str(r.get("Postal Code") or "").strip()
         if postal.endswith(".0"): postal = postal[:-2]
         postal = postal.zfill(6)
-        
         addr = ", ".join(str(p).strip() for p in [r.get("Street Address"), r.get("Building Name")] if p)
         sched = {day: parse_intervals(extract_day_schedule(h.get(day), day)) if h.get(day) else None for day in DAY_NAMES}
-        
         ecat = (h.get("Emergency Category") or "NOT_24_7_UNCONFIRMED").strip()
         if mbv in EMERGENCY_OVERRIDES: ecat = "E1_CONFIRMED_24_7"
-        
         appt_req = str(h.get("Appointment Required") or "").strip()
         is_appt = "appointment" in appt_req.lower() and "no" not in appt_req.lower()
-
         clinics.append({
             "id": mbv, "category": "Vet", "name": str(r.get("Clinic / Provider Name") or ""),
             "branch": r.get("Branch Name") or "", "address": addr, "postal": postal,
@@ -317,37 +275,28 @@ def build():
             "hours_text": ""
         })
 
-    # 2. PROCESS PLACES (Groomers, Parks, Malls, Restaurants)
+    # 2. PROCESS PLACES
     for p in places_data:
         pid = str(p.get("Place ID") or p.get("ID") or "").strip()
         if not pid: continue
-        
         raw_cat = str(p.get("Category") or "").strip().lower()
         if "park" in raw_cat: cat = "Park"
         elif "mall" in raw_cat: cat = "Mall"
         elif "groom" in raw_cat: cat = "Groomer"
         elif "restaurant" in raw_cat or "dining" in raw_cat or "food" in raw_cat or "cafe" in raw_cat: cat = "Restaurant"
         else: cat = raw_cat.capitalize() or "Other"
-
         rating_val = p.get("Google Rating") or p.get("Rating")
         try: rating_val = float(rating_val) if rating_val else 0.0
         except: rating_val = 0.0
-
         postal = str(int(p.get("Postal Code"))) if isinstance(p.get("Postal Code"), (int, float)) else str(p.get("Postal Code") or "").strip()
         if postal.endswith(".0"): postal = postal[:-2]
         postal = postal.zfill(6)
-        
         lat_val = p.get("Latitude")
         lng_val = p.get("Longitude")
         try:
-            if lat_val and lng_val:
-                lat_val = float(lat_val)
-                lng_val = float(lng_val)
-            else:
-                lat_val = None; lng_val = None
-        except:
-            lat_val = None; lng_val = None
-
+            if lat_val and lng_val: lat_val = float(lat_val); lng_val = float(lng_val)
+            else: lat_val = None; lng_val = None
+        except: lat_val = None; lng_val = None
         clinics.append({
             "id": pid, "category": cat, "name": str(p.get("Name") or "").strip(),
             "branch": "", "address": p.get("Address") or "", "postal": postal,
@@ -357,69 +306,40 @@ def build():
             "prices": [], "species": [], "hours_text": str(p.get("Operating Hours") or "").strip()
         })
 
-    print(f"[COUNT] Vets: {sum(1 for c in clinics if c['category'] == 'Vet')}")
-    print(f"[COUNT] Groomers: {sum(1 for c in clinics if c['category'] == 'Groomer')}")
-    print(f"[COUNT] Parks: {sum(1 for c in clinics if c['category'] == 'Park')}")
-    print(f"[COUNT] Malls: {sum(1 for c in clinics if c['category'] == 'Mall')}")
-    print(f"[COUNT] Restaurants: {sum(1 for c in clinics if c['category'] == 'Restaurant')}")
-
     cache = {}
     if CACHE_FILE.exists():
         try: cache = {k: tuple(v) for k, v in json.loads(CACHE_FILE.read_text()).items()}
         except Exception: pass
 
     for c in clinics:
-        print(f"Fetching data: {c['name']}...")
-        
-        # Check manual coordinates FIRST to prevent API failures for parks/malls
         if c["id"] in MANUAL_COORDS:
             c["lat"], c["lng"] = MANUAL_COORDS[c["id"]]
-            # Still fetch rating if it's a restaurant or vet
             if c["category"] in ["Vet", "Restaurant"]:
                 live_rating, live_reviews, _, _ = fetch_google_data(c['name'], c['address'], c['postal'])
-                if live_rating and live_reviews:
-                    c["rating"] = live_rating; c["review_count"] = live_reviews
+                if live_rating is not None:
+                    c["rating"] = live_rating; c["review_count"] = live_reviews or 0
         else:
             live_rating, live_reviews, g_lat, g_lng = fetch_google_data(c['name'], c['address'], c['postal'])
-            if live_rating and live_reviews:
-                c["rating"] = live_rating; c["review_count"] = live_reviews
+            if live_rating is not None:
+                c["rating"] = live_rating; c["review_count"] = live_reviews or 0
             if g_lat and g_lng:
                 c["lat"], c["lng"] = g_lat, g_lng
-                
-            # Fallback to OneMap
             if c["lat"] is None or c["lng"] is None:
                 coords = geocode_location(c["postal"], c["address"], c["name"], cache)
-                if coords: 
-                    c["lat"], c["lng"] = coords
-                else: 
-                    print(f"  -> WARNING: Could not find map coordinates for {c['name']} ({c['postal']})")
-                    c["lat"] = None
-                    c["lng"] = None
-        time.sleep(0.1)
-
-        # --- DEBUG PRINT FOR PARKS AND MALLS ---
-        if c["category"] in ["Park", "Mall"]:
-            if c["lat"] is not None:
-                print(f"  -> MAPPED {c['category']}: {c['name']} -> ({c['lat']}, {c['lng']})")
-            else:
-                print(f"  -> FAILED TO MAP {c['category']}: {c['name']} (ID: {c['id']}, Postal: {c['postal']})")
-        # ---------------------------------------
+                if coords: c["lat"], c["lng"] = coords
+                else: c["lat"] = None; c["lng"] = None
+        time.sleep(0.05)
 
     try: CACHE_FILE.write_text(json.dumps({k: v for k, v in cache.items()}, indent=2))
     except Exception: pass
 
-    # Filter out any clinics that failed to geocode entirely so they don't cluster in the center
     valid_clinics = [c for c in clinics if c["lat"] is not None and c["lng"] is not None]
-
-    # Add a tiny offset to any pins that share the exact same coordinates so they don't hide each other
     seen_coords = set()
     for c in valid_clinics:
         coord_key = (round(c["lat"], 5), round(c["lng"], 5))
         if coord_key in seen_coords:
-            c["lat"] += random.uniform(-0.0001, 0.0001)
-            c["lng"] += random.uniform(-0.0001, 0.0001)
-        else:
-            seen_coords.add(coord_key)
+            c["lat"] += random.uniform(-0.0001, 0.0001); c["lng"] += random.uniform(-0.0001, 0.0001)
+        else: seen_coords.add(coord_key)
 
     directory = {}
     for c in valid_clinics:
@@ -483,14 +403,14 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
 .disclaimer { font-size: 11px; color: #90A4AE; margin-top: 16px; padding-top: 12px; border-top: 2px dashed #E0E0E0; font-weight: 600; line-height: 1.4; }
 .disclaimer b { color: #388E3C; }
 
-.pin{width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:10px}
-.pin.open{background:#4CAF50}
-.pin.closed{background:#90A4AE}
-.pin.emergency{background:#F44336;animation:pulse 1.5s infinite}
-.pin.groomer{background:#FF1493}
-.pin.park{background:#8B4513;animation:pulse-brown 1.5s infinite}
-.pin.mall{background:#FFB300}
-.pin.dining{background:#FFEA00; border:3px solid #000; box-shadow: 0 0 15px #FFEA00; color:#000; font-size:12px;}
+.pin{width:22px;height:22px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;}
+.pin.open{background:#4CAF50; color:#fff;}
+.pin.closed{background:#90A4AE; color:#fff;}
+.pin.emergency{background:#F44336; color:#fff; font-size:16px; animation:pulse 1.5s infinite;}
+.pin.groomer{background:#FFEB3B; color:#000; border-color:#fff;}
+.pin.park{background:#8BC34A; color:#fff; animation:pulse-brown 1.5s infinite;}
+.pin.mall{background:#FFB300; color:#fff;}
+.pin.dining{background:#fff; border:3px solid #000; color:#000; box-shadow: 0 0 10px rgba(0,0,0,0.2);}
 
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(244,67,54,0.6)}70%{box-shadow:0 0 0 12px rgba(244,67,54,0)}100%{box-shadow:0 0 0 0 rgba(244,67,54,0)}}
 @keyframes pulse-brown{0%{box-shadow:0 0 0 0 rgba(139,69,19,0.6)}70%{box-shadow:0 0 0 12px rgba(139,69,19,0)}100%{box-shadow:0 0 0 0 rgba(139,69,19,0)}}
@@ -509,37 +429,29 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
 .price-item { padding: 4px 0; border-bottom: 1px dashed #E0E0E0; font-weight: 600; color: #555; }
 .price-item:last-child { border-bottom: none; }
 
+.slider-container { display: flex; align-items: center; gap: 10px; margin-top: 6px; background: #fff; border: 2px solid #E0E0E0; padding: 8px 12px; border-radius: 14px; }
+.slider-container input[type=range] { flex: 1; accent-color: #FF9800; cursor: pointer; }
+.slider-val { font-size: 12px; font-weight: 800; color: #FF9800; min-width: 70px; text-align: right; }
+
 #mobile-top-bar, #mobile-species-bar, #mobile-radius-slider, #mobile-rating-bar { display: none; }
 @media (max-width: 768px) {
   #panel { display: none !important; }
   #mobile-top-bar { display: flex; position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); left: 12px; right: 12px; z-index: 2500; gap: 8px; }
   .m-search-wrap { flex: 1; position: relative; }
   #mobile-search-input { width: 100%; height: 46px; padding: 0 16px; border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,.15); font-family: inherit; font-size: 15px; font-weight: 600; background: #fff; color: #2C3E50; box-sizing: border-box; }
-  #mobile-house-btn { width: 46px; height: 46px; background: #fff; border: none; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,.15); font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; }
-  #mobile-house-btn.on { background: #4CAF50; }
   
   #mobile-species-bar { display: flex; position: fixed; top: calc(env(safe-area-inset-top, 0px) + 68px); left: 12px; right: 12px; z-index: 2500; gap: 6px; white-space: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
   #mobile-species-bar::-webkit-scrollbar { display: none; }
   .m-sp-btn { flex: 0 0 auto; height: 40px; padding: 0 16px; border: none; border-radius: 12px; background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,.12); font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
   .m-sp-btn.on { background: #4CAF50; color: #fff; }
   
-  #mobile-rating-bar { display: flex; position: fixed; top: calc(env(safe-area-inset-top, 0px) + 116px); left: 12px; right: 12px; z-index: 2500; gap: 6px; white-space: nowrap; overflow-x: auto; }
-  #mobile-rating-bar::-webkit-scrollbar { display: none; }
-  .m-r-btn { flex: 0 0 auto; height: 36px; padding: 0 14px; border: none; border-radius: 10px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.1); font-size: 13px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
-  .m-r-btn.on { background: #FF9800; color: #fff; }
-
-  #mobile-dir-dropdown { display: none; position: absolute; top: 52px; left: 0; right: 0; background: #fff; border-radius: 16px; box-shadow: 0 8px 25px rgba(0,0,0,.2); max-height: 65vh; overflow-y: auto; z-index: 2600; }
-  #mobile-dir-dropdown.open { display: block; }
-  .md-letter { padding: 12px 16px; font-weight: 800; font-size: 15px; color: #388E3C; background: #F9FBF9; border-bottom: 1px solid #EEE; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-  .md-letter::after { content: "+"; font-size: 18px; color: #90A4AE; }
-  .md-letter.open::after { content: "−"; }
-  .md-items { display: none; }
-  .md-letter.open + .md-items { display: block; }
-  .md-item { padding: 14px 16px 14px 24px; border-bottom: 1px solid #F1F5F9; font-weight: 600; font-size: 14px; color: #2C3E50; cursor: pointer; }
-  .md-item:active { background: #E8F5E9; }
+  #mobile-rating-bar { display: none; position: fixed; top: calc(env(safe-area-inset-top, 0px) + 116px); left: 12px; right: 12px; z-index: 2500; background: #fff; padding: 8px 12px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,.15); align-items: center; gap: 10px; }
+  #mobile-rating-bar.active { display: flex; }
+  #mobile-rating-bar input { flex: 1; accent-color: #FF9800; }
+  #mobile-rating-val { font-size: 13px; font-weight: 800; color: #FF9800; min-width: 60px; text-align: right; }
   
-  #mobile-radius-slider { display: block; position: fixed; top: 50%; right: -85px; transform: translateY(-50%) rotate(-90deg); width: 220px; height: 44px; z-index: 2500; background: rgba(255,255,255,0.9); border-radius: 22px; box-shadow: 0 4px 15px rgba(0,0,0,.15); padding: 0 10px; }
-  #mobile-radius-slider input { width: 100%; height: 100%; accent-color: #4CAF50; }
+  #mobile-radius-slider { display: block; position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); left: 12px; right: 12px; z-index: 2500; background: rgba(255,255,255,0.95); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,.2); padding: 10px 16px; }
+  #mobile-radius-slider input { width: 100%; accent-color: #4CAF50; }
   
   .leaflet-control-zoom { display: none !important; }
   .leaflet-popup-content-wrapper { border-radius: 20px !important; }
@@ -557,22 +469,19 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
     <input id="mobile-search-input" placeholder="Search..." autocomplete="off">
     <div id="mobile-dir-dropdown"></div>
   </div>
-  <button id="mobile-house-btn" title="House Calls Only">🏠</button>
 </div>
 
 <div id="mobile-species-bar">
   <button class="m-sp-btn cat-btn on" data-cat="Vet">🏥 Vets</button>
-  <button class="m-sp-btn cat-btn" data-cat="Groomer">✂️ Groomers</button>
-  <button class="m-sp-btn cat-btn" data-cat="Park">🌳 Parks</button>
-  <button class="m-sp-btn cat-btn" data-cat="Mall">🛍️ Malls</button>
+  <button class="m-sp-btn cat-btn" data-cat="Groomer">🌼 Groomers</button>
+  <button class="m-sp-btn cat-btn" data-cat="Park">🍃 Parks</button>
+  <button class="m-sp-btn cat-btn" data-cat="Mall">🛍️ Pet Mall</button>
+  <button class="m-sp-btn cat-btn" data-cat="Restaurant">🍴 Dine with Pets</button>
 </div>
 
 <div id="mobile-rating-bar">
-  <button class="m-r-btn cat-btn" data-cat="Restaurant">🍽️ Dining</button>
-  <button class="m-r-btn r-btn on" data-r="all">⭐ All</button>
-  <button class="m-r-btn r-btn" data-r="4.5">⭐ 4.5+</button>
-  <button class="m-r-btn r-btn" data-r="4.2-4.4">⭐ 4.2-4.4</button>
-  <button class="m-r-btn r-btn" data-r="below4.2">⭐ < 4.2</button>
+  <input type="range" id="mobile-rating-slider" min="1" max="5" step="0.1" value="1">
+  <span id="mobile-rating-val">All Stars</span>
 </div>
 
 <div id="mobile-radius-slider">
@@ -594,15 +503,15 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
       </div>
 
       <div class="filters" style="margin-top: 12px;">
-        <button class="chip cat-btn" data-cat="Groomer" style="width: 100%; font-size: 14px; padding: 10px;">✂️ Groomers</button>
+        <button class="chip cat-btn" data-cat="Groomer" style="width: 100%; font-size: 14px; padding: 10px;">🌼 Groomers</button>
       </div>
 
       <div class="filters" style="margin-top: 6px;">
-        <button class="chip cat-btn" data-cat="Park" style="width: 100%; font-size: 14px; padding: 10px;">🌳 Parks</button>
+        <button class="chip cat-btn" data-cat="Park" style="width: 100%; font-size: 14px; padding: 10px;">🍃 Parks</button>
       </div>
 
       <div class="filters" style="margin-top: 6px;">
-        <button class="chip cat-btn" data-cat="Mall" style="width: 100%; font-size: 14px; padding: 10px;">🛍️ Pet Friendly Malls</button>
+        <button class="chip cat-btn" data-cat="Mall" style="width: 100%; font-size: 14px; padding: 10px;">🛍️ Pet Mall</button>
       </div>
 
       <div class="search-wrap" style="margin-top: 16px;">
@@ -611,12 +520,11 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
       </div>
 
       <div class="filters" style="margin-top: 4px; flex-direction: column; gap: 8px;">
-        <button class="chip cat-btn" data-cat="Restaurant" style="width: 100%; font-size: 14px; padding: 10px;">🍽️ Dining</button>
-        <div style="display: flex; gap: 6px; width: 100%;">
-            <button class="chip r-btn on" data-r="all" style="flex: 1; padding: 8px 4px; font-size: 11px;">All</button>
-            <button class="chip r-btn" data-r="4.5" style="flex: 1; padding: 8px 4px; font-size: 11px;">⭐ 4.5+</button>
-            <button class="chip r-btn" data-r="4.2-4.4" style="flex: 1; padding: 8px 4px; font-size: 11px;">⭐ 4.2-4.4</button>
-            <button class="chip r-btn" data-r="below4.2" style="flex: 1; padding: 8px 4px; font-size: 11px;">⭐ < 4.2</button>
+        <button class="chip cat-btn" data-cat="Restaurant" style="width: 100%; font-size: 14px; padding: 10px;">🍴 Dine with Pets</button>
+        <div id="desktop-rating-container" class="slider-container" style="display:none;">
+            <span style="font-size:14px; color:#FF9800;">⭐</span>
+            <input type="range" id="rating-slider" min="1" max="5" step="0.1" value="1">
+            <span id="rating-val" class="slider-val">All Stars</span>
         </div>
       </div>
 
@@ -630,7 +538,7 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
         <span class="dot" style="background:#4CAF50"></span>Open / Vet<br>
         <span class="dot" style="background:#90A4AE"></span>Closed / Unknown<br>
         <span class="dot" style="background:#F44336"></span>24/7 Emergency<br>
-        <span class="dot" style="background:#FF1493"></span>Groomer &bull; <span class="dot" style="background:#8B4513"></span>Park &bull; <span class="dot" style="background:#FFB300"></span>Mall &bull; <span class="dot" style="background:#FFEA00"></span>Dining
+        <span class="dot" style="background:#FFEB3B"></span>Groomer &bull; <span class="dot" style="background:#8BC34A"></span>Park &bull; <span class="dot" style="background:#FFB300"></span>Mall &bull; <span class="dot" style="background:#fff; border: 2px solid #000;"></span>Dining
       </div>
 
       <div id="status">Ready to sniff out a place! 🐶</div>
@@ -679,11 +587,12 @@ centreHandle.on('dragend', e => moveCentre(e.target.getLatLng()));
 function pinIcon(c, st) {
   let colour = "open";
   let symbol = "";
-  if (c.category === "Groomer") { colour = "groomer"; symbol = "✂️"; }
-  else if (c.category === "Park") { colour = "park"; symbol = "🌳"; }
+  
+  if (c.category === "Groomer") { colour = "groomer"; symbol = "🌼"; }
+  else if (c.category === "Park") { colour = "park"; symbol = "🍃"; }
   else if (c.category === "Mall") { colour = "mall"; symbol = "🛍️"; }
-  else if (c.category === "Restaurant") { colour = "dining"; symbol = "🍽️"; }
-  else if (c.ecat === "E1_CONFIRMED_24_7") { colour = "emergency"; }
+  else if (c.category === "Restaurant") { colour = "dining"; symbol = "🍴"; }
+  else if (c.ecat === "E1_CONFIRMED_24_7") { colour = "emergency"; symbol = "✚"; }
   else if (st.key === "closed") { colour = "closed"; }
 
   return L.divIcon({ className: "", html: `<div class="pin-hit"><div class="pin ${colour}">${symbol}</div></div>`, iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -12] });
@@ -709,19 +618,24 @@ function popupHTML(c, st) {
   const phoneHTML = c.phone ? `<a class="btn-link" href="tel:${primaryPhone(c.phone)}">📞 Call ${esc(c.phone.split('/')[0].trim())}</a>` : '';
 
   if (c.category !== "Vet") {
-    let badgeColor = "#8B4513";
-    if (c.category === "Groomer") badgeColor = "#FF1493";
+    let badgeColor = "#8B4513"; 
+    if (c.category === "Groomer") badgeColor = "#FFEB3B";
     if (c.category === "Mall") badgeColor = "#FFB300";
-    if (c.category === "Restaurant") badgeColor = "#FFEA00";
+    if (c.category === "Restaurant") badgeColor = "#fff";
     
     let ratingHTML = "";
     if (c.category === "Restaurant" && c.rating > 0) {
-        ratingHTML = `<div style="display:flex; align-items:center; gap:4px; margin:6px 0; font-size:13px; font-weight:800; color:#FF9800;"><span>⭐ ${parseFloat(c.rating).toFixed(1)}</span></div>`;
+        ratingHTML = `<div style="display:flex; align-items:center; gap:4px; margin:6px 0; font-size:13px; font-weight:800; color:#FF9800;">
+            <span>⭐ ${parseFloat(c.rating).toFixed(1)}</span>
+            <span style="color:#90A4AE; font-weight:600; font-size:12px;">(${c.review_count} reviews)</span>
+        </div>`;
     }
+    
+    let txtColor = (c.category === "Restaurant") ? "#000" : (c.category === "Groomer" ? "#000" : "#fff");
 
     return `<div class="popup">
       <h3>${esc(c.name)}</h3>
-      <span class="badge" style="background:${badgeColor}; color:${c.category === 'Restaurant' ? '#000' : '#fff'}">${esc(c.category === "Park" ? "Park" : c.category)}</span>
+      <span class="badge" style="background:${badgeColor}; color:${txtColor}; ${c.category === 'Restaurant' ? 'border: 1px solid #000;' : ''}">${esc(c.category === "Park" ? "Park" : (c.category === "Mall" ? "Pet Mall" : (c.category === "Restaurant" ? "Dine with Pets" : c.category)))}</span>
       ${ratingHTML}
       <p style="font-size:13px; color:#555; margin-top:8px;">${esc(c.address)}<br>Singapore ${esc(c.postal)}</p>
       ${c.hours_text ? `<p style="font-size:13px; color:#555; margin-top:8px;">⏰ <b>Hours:</b> ${esc(c.hours_text)}</p>` : ''}
@@ -771,7 +685,7 @@ const markers = []; const markersById = {}; const clinicsById = {};
 let currentFilter = "all";
 let currentSpecies = "all";
 let currentCategory = "Vet";
-let currentRating = "all";
+let currentRating = 1.0;
 let searchText = ""; let selectedId = null;
 
 function updateVisibility() {
@@ -804,13 +718,10 @@ function updateVisibility() {
       if (sp.length > 0 && !sp.includes(currentSpecies)) show = false;
     }
     
-    if (show && currentCategory === "Restaurant" && currentRating !== "all") {
-       if (currentRating === "4.5" && c.rating < 4.5) show = false;
-       if (currentRating === "4.2-4.4" && (c.rating < 4.2 || c.rating >= 4.5)) show = false;
-       if (currentRating === "below4.2" && c.rating >= 4.2) show = false;
+    if (show && currentCategory === "Restaurant" && currentRating > 1.0) {
+       if (c.rating < currentRating) show = false;
     }
     
-    // Radius applies to Vets and Groomers only, EXCEPT for Emergency Vets
     if (show && !isEmergency && !hasSearch && (currentCategory === "Vet" || currentCategory === "Groomer")) {
       show = map.distance(centre, m.marker.getLatLng()) <= radius;
     }
@@ -823,10 +734,42 @@ function updateVisibility() {
   if (currentCategory === "Vet") catName = "Vets";
   if (currentCategory === "Groomer") catName = "Groomers";
   if (currentCategory === "Park") catName = "Parks";
-  if (currentCategory === "Mall") catName = "Pet Friendly Malls";
-  if (currentCategory === "Restaurant") catName = "Dining";
+  if (currentCategory === "Mall") catName = "Pet Malls";
+  if (currentCategory === "Restaurant") catName = "Dine with Pets";
 
   document.getElementById("status").textContent = hasSearch ? `Search: ${visible} matching` : `Showing ${visible} ${catName}`;
+}
+
+function updateRatingUI(val) {
+    let txt = "All Stars";
+    if (val > 1) txt = `${parseFloat(val).toFixed(1)}+ Stars`;
+    document.getElementById("rating-val").textContent = txt;
+    if (document.getElementById("mobile-rating-val")) {
+        document.getElementById("mobile-rating-val").textContent = txt;
+    }
+}
+
+document.getElementById("rating-slider").addEventListener("input", e => {
+    currentRating = parseFloat(e.target.value);
+    updateRatingUI(currentRating);
+    if (currentCategory !== "Restaurant") {
+        document.querySelector('.cat-btn[data-cat="Restaurant"]').click();
+    } else {
+        updateVisibility();
+    }
+});
+
+if (document.getElementById("mobile-rating-slider")) {
+    document.getElementById("mobile-rating-slider").addEventListener("input", e => {
+        currentRating = parseFloat(e.target.value);
+        document.getElementById("rating-slider").value = currentRating;
+        updateRatingUI(currentRating);
+        if (currentCategory !== "Restaurant") {
+            document.querySelector('.cat-btn[data-cat="Restaurant"]').click();
+        } else {
+            updateVisibility();
+        }
+    });
 }
 
 document.querySelectorAll('.cat-btn').forEach(b => {
@@ -836,12 +779,21 @@ document.querySelectorAll('.cat-btn').forEach(b => {
     
     const isVet = currentCategory === "Vet";
     const isGroomer = currentCategory === "Groomer";
+    const isDining = currentCategory === "Restaurant";
+    
     document.getElementById("species-filters").style.display = isVet ? "flex" : "none";
     document.getElementById("radius-row").style.display = (isVet || isGroomer) ? "flex" : "none";
     
-    if (currentCategory !== "Restaurant") {
-        currentRating = "all";
-        document.querySelectorAll('.r-btn').forEach(x => x.classList.toggle('on', x.dataset.r === "all"));
+    document.getElementById("desktop-rating-container").style.display = isDining ? "flex" : "none";
+    if (document.getElementById("mobile-rating-bar")) {
+        document.getElementById("mobile-rating-bar").classList.toggle("active", isDining);
+    }
+
+    if (!isDining) {
+        currentRating = 1.0;
+        document.getElementById("rating-slider").value = 1;
+        if (document.getElementById("mobile-rating-slider")) document.getElementById("mobile-rating-slider").value = 1;
+        updateRatingUI(1);
     }
 
     document.getElementById("search").value = "";
@@ -857,20 +809,6 @@ document.querySelectorAll('.sp-btn').forEach(b => {
     const sp = b.dataset.sp;
     currentSpecies = (currentSpecies === sp) ? "all" : sp;
     document.querySelectorAll('.sp-btn').forEach(x => x.classList.toggle('on', x.dataset.sp === currentSpecies));
-    selectedId = null; updateVisibility();
-  });
-});
-
-document.querySelectorAll('.r-btn').forEach(b => {
-  b.addEventListener('click', () => {
-    currentRating = b.dataset.r;
-    
-    currentCategory = "Restaurant";
-    document.querySelectorAll('.cat-btn').forEach(x => x.classList.toggle('on', x.dataset.cat === "Restaurant"));
-    document.getElementById("species-filters").style.display = "none";
-    document.getElementById("radius-row").style.display = "none";
-
-    document.querySelectorAll('.r-btn').forEach(x => x.classList.toggle('on', x.dataset.r === currentRating));
     selectedId = null; updateVisibility();
   });
 });
@@ -942,7 +880,6 @@ DATA.clinics.forEach(c => {
   layer.addLayer(marker);
 });
 
-// Initialize UI
 document.getElementById("cat-filters").dispatchEvent(new Event("click"));
 document.querySelector('.cat-btn[data-cat="Vet"]').click();
 if (unresolved) console.log("Unresolved coords: " + unresolved);
