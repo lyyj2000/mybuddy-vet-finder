@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V24 - STANDARDISED ICONS)
+# build_map.py  —  MyBuddy Pet Finder (V26 - RADIUS FOR DINING & FIXED MOBILE)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -722,7 +722,8 @@ function updateVisibility() {
        if (c.rating < currentRating) show = false;
     }
     
-    if (show && !isEmergency && !hasSearch && (currentCategory === "Vet" || currentCategory === "Groomer")) {
+    // Radius applies to Vets, Groomers, and Restaurants (Dining)
+    if (show && !isEmergency && !hasSearch && (currentCategory === "Vet" || currentCategory === "Groomer" || currentCategory === "Restaurant")) {
       show = map.distance(centre, m.marker.getLatLng()) <= radius;
     }
 
@@ -782,7 +783,13 @@ document.querySelectorAll('.cat-btn').forEach(b => {
     const isDining = currentCategory === "Restaurant";
     
     document.getElementById("species-filters").style.display = isVet ? "flex" : "none";
-    document.getElementById("radius-row").style.display = (isVet || isGroomer) ? "flex" : "none";
+    
+    // Radius slider now shows for Vets, Groomers, AND Dining
+    const showRadius = isVet || isGroomer || isDining;
+    document.getElementById("radius-row").style.display = showRadius ? "flex" : "none";
+    if (document.getElementById("mobile-radius-slider")) {
+        document.getElementById("mobile-radius-slider").style.display = showRadius ? "block" : "none";
+    }
     
     document.getElementById("desktop-rating-container").style.display = isDining ? "flex" : "none";
     if (document.getElementById("mobile-rating-bar")) {
@@ -819,6 +826,18 @@ document.getElementById("radius").addEventListener("input", e => {
   document.getElementById("radiusVal").textContent = km.toFixed(1) + " km";
   updateVisibility();
 });
+
+// FIXED: Connect the mobile radius slider!
+const mobileRadiusInput = document.getElementById("mobile-radius-input");
+if (mobileRadiusInput) {
+    mobileRadiusInput.addEventListener("input", e => {
+        const km = parseFloat(e.target.value);
+        centreCircle.setRadius(km * 1000);
+        document.getElementById("radius").value = km; // Sync with desktop slider
+        document.getElementById("radiusVal").textContent = km.toFixed(1) + " km";
+        updateVisibility();
+    });
+}
 
 const searchInput = document.getElementById("search");
 const directory = document.getElementById("directory");
