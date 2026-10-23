@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V30 - USER FEEDBACK REFINEMENTS)
+# build_map.py  —  MyBuddy Pet Finder (V31 - SMART POSTAL CODE SEARCH)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -710,6 +710,16 @@ let currentCategory = "Vet";
 let currentRating = 1.0;
 let searchText = ""; let selectedId = null;
 
+async function geocodeCentre(query) {
+  const isPostal = /^\d{6}$/.test(query);
+  const url = "https://www.onemap.gov.sg/api/common/elastic/search?searchVal=" + encodeURIComponent(isPostal ? query : query + ", Singapore") + "&returnGeom=Y&getAddrDetails=Y&pageNum=1";
+  const r = await fetch(url); const j = await r.json();
+  const first = (j.results || [])[0];
+  if (!first) return null;
+  const lat = parseFloat(first.LATITUDE), lng = parseFloat(first.LONGITUDE);
+  return (isNaN(lat) || isNaN(lng)) ? null : { lat, lng, isPostal };
+}
+
 function updateVisibility() {
   const centre = centreCircle.getLatLng(); const radius = centreCircle.getRadius();
   const q = searchText.trim().toLowerCase(); const hasSearch = q.length > 0;
@@ -869,6 +879,36 @@ if (mobileRadiusInput) {
     });
 }
 
+// --- SMART SEARCH LOGIC ---
+let searchTimeout;
+
+async function handlePostalSearch(q) {
+    clearTimeout(searchTimeout);
+    document.getElementById("status").textContent = `Locating ${q}...`;
+    searchTimeout = setTimeout(async () => {
+        try {
+            const res = await geocodeCentre(q);
+            if (res) {
+                const ll = L.latLng(res.lat, res.lng);
+                centreCircle.setLatLng(ll);
+                centreHandle.setLatLng(ll);
+                map.flyTo(ll, 16);
+                
+                // Reset text filter so radius takes over
+                searchText = ""; 
+                selectedId = null;
+                updateVisibility();
+                
+                document.getElementById("status").textContent = `Showing places near ${q}`;
+            } else {
+                document.getElementById("status").textContent = `Postal code not found`;
+            }
+        } catch(e) {
+            document.getElementById("status").textContent = `Error finding postal code`;
+        }
+    }, 600); 
+}
+
 const searchInput = document.getElementById("search");
 const directory = document.getElementById("directory");
 
@@ -896,13 +936,19 @@ function closeDirectory() { directory.classList.remove("open"); }
 searchInput.addEventListener("focus", openDirectory);
 searchInput.addEventListener("click", openDirectory);
 searchInput.addEventListener("input", () => {
-  searchText = searchInput.value; selectedId = null;
-  const q = searchText.trim().toLowerCase();
-  if (q) {
-    const matches = Object.values(markersById).filter(m => m.clinic.name.toLowerCase().includes(q) || m.clinic.id.toLowerCase().includes(q));
-    if (matches.length === 1) selectClinic(matches[0].clinic.id, { keepInput: true });
-    else updateVisibility();
-  } else { updateVisibility(); }
+  const q = searchInput.value.trim();
+  
+  if (/^\d{6}$/.test(q)) {
+      searchText = ""; 
+      handlePostalSearch(q);
+  } else {
+      searchText = q.toLowerCase(); selectedId = null;
+      if (q) {
+        const matches = Object.values(markersById).filter(m => m.clinic.name.toLowerCase().includes(searchText) || m.clinic.id.toLowerCase().includes(searchText));
+        if (matches.length === 1) selectClinic(matches[0].clinic.id, { keepInput: true });
+        else updateVisibility();
+      } else { updateVisibility(); }
+  }
   openDirectory();
 });
 document.addEventListener("click", e => { if (!e.target.closest(".search-wrap")) closeDirectory(); });
@@ -912,7 +958,6 @@ function buildMobileDropdown(filter = "") {
     const q = filter.toLowerCase();
     mDropdown.innerHTML = "";
 
-    // DISABLE DROPDOWN FOR MALL
     if (currentCategory === "Mall") return;
     
     const letters = Object.keys(DATA.directory).sort();
@@ -959,7 +1004,21 @@ if (mobileSearchInput && mobileDropdown) {
         mobileDropdown.classList.add("open");
     });
     mobileSearchInput.addEventListener("input", () => {
-        buildMobileDropdown(mobileSearchInput.value);
+        const q = mobileSearchInput.value.trim();
+        
+        if (/^\d{6}$/.test(q)) {
+            searchText = "";
+            mobileDropdown.classList.remove("open");
+            handlePostalSearch(q);
+        } else {
+            searchText = q.toLowerCase(); selectedId = null;
+            if (q) {
+                const matches = Object.values(markersById).filter(m => m.clinic.name.toLowerCase().includes(searchText) || m.clinic.id.toLowerCase().includes(searchText));
+                if (matches.length === 1) selectClinic(matches[0].clinic.id, { keepInput: true });
+                else updateVisibility();
+            } else { updateVisibility(); }
+            buildMobileDropdown(mobileSearchInput.value);
+        }
     });
     document.addEventListener("click", e => {
         if (!e.target.closest(".m-search-wrap")) {
@@ -968,9 +1027,16 @@ if (mobileSearchInput && mobileDropdown) {
     });
 }
 
-function clearSearch() { searchInput.value = ""; searchText = ""; selectedId = null; updateVisibility(); }
+function clearSearch() { 
+    clearTimeout(searchTimeout);
+    searchInput.value = ""; 
+    mobileSearchInput.value = "";
+    searchText = ""; selectedId = null; 
+    updateVisibility(); 
+}
 function selectClinic(id, opts) {
   const m = markersById[id]; if (!m) return;
+  clearTimeout(searchTimeout);
   selectedId = id;
   if (!(opts && opts.keepInput)) { searchInput.value = m.clinic.name; searchText = m.clinic.name.toLowerCase(); }
   closeDirectory();
