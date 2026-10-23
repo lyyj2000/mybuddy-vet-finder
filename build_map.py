@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V33 - FUNERAL SERVICES & TRANSPORT)
+# build_map.py  —  MyBuddy Pet Finder (V34 - TRANSPORT ONLY FOR VETS)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -230,7 +230,6 @@ def build():
     funeral_keywords = ["funeral", "cremation", "cremate", "memorial"]
     funeral_vets = set()
     
-    # Check VET_SERVICES
     for r in services_data:
         mbv = str(r.get("MyBuddy Vet ID") or "").strip()
         if not mbv: continue
@@ -238,7 +237,6 @@ def build():
         if any(kw in row_text for kw in funeral_keywords):
             funeral_vets.add(mbv)
             
-    # Check MASTER_LIST just in case it's listed there
     for r in master:
         mbv = str(r.get("MyBuddy Vet ID") or "").strip()
         if not mbv: continue
@@ -708,18 +706,22 @@ function popupHTML(c, st) {
 
   const phoneHTML = c.phone ? `<a class="btn-link" href="tel:${primaryPhone(c.phone)}">📞 Call ${esc(c.phone.split('/')[0].trim())}</a>` : '';
 
-  let transportHtml = `
-    <div style="margin-top:14px; border-top:2px dashed #EEE; padding-top:12px; margin-bottom:10px;">
-      <div style="font-weight:800; color:#388E3C; margin-bottom:8px; font-size:14px;">🚗 Need transport?</div>
-      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
-        <button class="trans-btn" style="background-color:#FFF9C4; color:#F57F17; border:1px solid #FFD54F; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'pet')">GrabPet</button>
-        <button class="trans-btn" style="background-color:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'ambulance')">Petbulance</button>
-        <button class="trans-btn" style="background-color:#F3E5F5; color:#6A1B9A; border:1px solid #E1BEE7; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'mobile')">Mobile Vet</button>
-      </div>
-      <div id="transport-res-${c.id}" style="display:none; background:#F9FBFD; padding:10px; border-radius:10px; font-size:12px; border:1px solid #E1E8ED;"></div>
-      <div style="font-size:10px; color:#90A4AE; margin-top:6px; font-weight:700;">💡 MyBuddy takes 0% commission. Transport partners are independent.</div>
-    </div>
-  `;
+  // TRANSPORT ONLY FOR VETS
+  let transportHtml = "";
+  if (c.category === "Vet") {
+      transportHtml = `
+        <div style="margin-top:14px; border-top:2px dashed #EEE; padding-top:12px; margin-bottom:10px;">
+          <div style="font-weight:800; color:#388E3C; margin-bottom:8px; font-size:14px;">🚗 Need transport?</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+            <button class="trans-btn" style="background-color:#FFF9C4; color:#F57F17; border:1px solid #FFD54F; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'pet')">GrabPet</button>
+            <button class="trans-btn" style="background-color:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'ambulance')">Petbulance</button>
+            <button class="trans-btn" style="background-color:#F3E5F5; color:#6A1B9A; border:1px solid #E1BEE7; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'mobile')">Mobile Vet</button>
+          </div>
+          <div id="transport-res-${c.id}" style="display:none; background:#F9FBFD; padding:10px; border-radius:10px; font-size:12px; border:1px solid #E1E8ED;"></div>
+          <div style="font-size:10px; color:#90A4AE; margin-top:6px; font-weight:700;">💡 MyBuddy takes 0% commission. Transport partners are independent.</div>
+        </div>
+      `;
+  }
 
   if (c.category !== "Vet") {
     let badgeColor = "#8B4513"; 
@@ -760,7 +762,6 @@ function popupHTML(c, st) {
         ${phoneHTML}
         ${googleLinkHTML}
       </div>
-      ${transportHtml}
     </div>`;
   }
 
