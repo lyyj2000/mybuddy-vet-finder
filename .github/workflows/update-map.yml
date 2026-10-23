@@ -3,15 +3,11 @@ name: Nightly Vet Map Update
 on:
   schedule:
     - cron: "0 19 * * *"
-      timezone: "Asia/Singapore"
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
 
     steps:
       - name: 📥 Checkout repository
@@ -26,21 +22,13 @@ jobs:
         run: pip install openpyxl
 
       - name: 🗺️ Run build_map.py
-        id: build
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path("build_map.py")
-          src = p.read_text()
-          src = src.replace(
-              'GOOGLE_API_KEY = "PASTE_YOUR_NEW_API_KEY_HERE"',
-              f'GOOGLE_API_KEY = "{__import__("os").environ["GOOGLE_API_KEY"]}"'
-          )
-          p.write_text(src)
-          PY
-          python build_map.py 2>&1 | tee build.log
+          # Safely replace the placeholder with the real key
+          sed -i "s/PASTE_YOUR_NEW_API_KEY_HERE/$GOOGLE_API_KEY/" build_map.py
+          # Run the script and show the output
+          python build_map.py
 
       - name: 🚀 Deploy to Cloudflare Pages
         env:
@@ -48,8 +36,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           mkdir -p dist
-          cp index.html manifest.json icon.svg dist/
-          npx wrangler@3 pages deploy dist \
-            --project-name=mybuddy-vet-finder \
-            --branch=main \
-            --commit-dirty=true
+          cp index.html dist/
+          cp manifest.json dist/
+          cp icon.svg dist/
+          npx wrangler@3 pages deploy dist --project-name=mybuddy-vet-finder --branch=main
