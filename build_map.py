@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V37 - NEW GOOGLE PLACES API)
+# build_map.py  —  MyBuddy Pet Finder (V38 - GOOGLE REVIEWS)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -8,15 +8,16 @@ from openpyxl import load_workbook
 
 WORKBOOK_VETS = "MyBuddy_Vet_Finder_MASTER_RECONCILED_2026-10-15_v9.xlsx"
 WORKBOOK_PLACES = "PET_PLACES.xlsx"
-WORKBOOK_REST = "Pets_places rest.xlsx"
+WORKBOOK_REST = "Pets_places_rest_updated.xlsx"
+REVIEWS_CACHE_FILE = "reviews_cache.json"
 
 OUTPUT   = "index.html"
 CACHE_FILE = Path(__file__).parent / "geocache.json"
 MANIFEST_OUTPUT = "manifest.json"
 ICON_OUTPUT     = "icon.svg"
 
-# SAFE FOR GITHUB UPLOAD (The GitHub Robot will inject the real key)
-GOOGLE_API_KEY = "PASTE_YOUR_NEW_API_KEY_HERE"
+# Leave this as is! We already have the ratings and reviews in the Excel/JSON.
+GOOGLE_API_KEY = "AIzaSyDksl5txHjfytWCmk49SzqGFvCo3FGbmTw"
 
 for old in ["mybuddy-vet-map.html", "mybuddy-vet-map-v2.html", "mybuddy-vet-map-v3.html"]:
     old_file = Path(__file__).parent / old
@@ -177,7 +178,6 @@ def geocode_location(postal, address, name, cache):
             return coords
     return None
 
-# --- NEW GOOGLE PLACES API (V1) ---
 def fetch_google_data(name, address, postal):
     if GOOGLE_API_KEY == "PASTE_YOUR_NEW_API_KEY_HERE": return None, None, None, None, None
     
@@ -308,7 +308,7 @@ def build():
             "lat": None, "lng": None, "rating": r.get("Google Rating") or 0,
             "review_count": r.get("Review Count") or 0, "is_appt": is_appt,
             "prices": prices_by_id.get(mbv, []), "species": species_by_id.get(mbv, []),
-            "hours_text": "", "place_id": "",
+            "hours_text": "", "place_id": "", "reviews": [],
             "has_funeral": mbv in funeral_vets
         })
 
@@ -339,15 +339,20 @@ def build():
             "branch": "", "address": p.get("Address") or "", "postal": postal,
             "phone": str(p.get("Phone") or "").strip(), "whatsapp": "", "booking": "",
             "ecat": "", "schedule": {}, "house_call": False, "hospice": False,
-            "lat": lat_val, "lng": lng_val, "rating": rating_val, "review_count": 0, "is_appt": False,
+            "lat": lat_val, "lng": lng_val, "rating": rating_val, "review_count": "", "is_appt": False,
             "prices": [], "species": [], "hours_text": str(p.get("Operating Hours") or "").strip(),
-            "place_id": "", "has_funeral": False
+            "place_id": str(p.get("Place ID") or "").strip(), "has_funeral": False, "reviews": []
         })
 
     cache = {}
     if CACHE_FILE.exists():
         try: cache = {k: tuple(v) for k, v in json.loads(CACHE_FILE.read_text()).items()}
         except Exception: pass
+
+    reviews_cache = {}
+    if Path(REVIEWS_CACHE_FILE).exists():
+        try: reviews_cache = json.loads(Path(REVIEWS_CACHE_FILE).read_text(encoding="utf-8"))
+        except Exception as e: print(f"Warning: Could not load {REVIEWS_CACHE_FILE} - {e}")
 
     for c in clinics:
         if c["id"] in MANUAL_COORDS:
@@ -368,6 +373,11 @@ def build():
                 coords = geocode_location(c["postal"], c["address"], c["name"], cache)
                 if coords: c["lat"], c["lng"] = coords
                 else: c["lat"] = None; c["lng"] = None
+        
+        # Load reviews from cache!
+        if c.get("place_id") and c["place_id"] in reviews_cache:
+            c["reviews"] = reviews_cache[c["place_id"]]
+            
         time.sleep(0.05)
 
     try: CACHE_FILE.write_text(json.dumps({k: v for k, v in cache.items()}, indent=2))
@@ -749,7 +759,7 @@ function popupHTML(c, st) {
     if (c.category === "Mall") badgeColor = "#FFB300";
     if (c.category === "Restaurant") badgeColor = "#fff";
     
-    let ratingHTML = "";
+        let ratingHTML = "";
     if (c.category === "Restaurant" && c.rating > 0) {
         ratingHTML = `<div style="display:flex; align-items:center; gap:4px; margin:6px 0; font-size:13px; font-weight:800; color:#FF9800;">
             <span>⭐ ${parseFloat(c.rating).toFixed(1)}</span>
@@ -760,6 +770,7 @@ function popupHTML(c, st) {
     let txtColor = (c.category === "Restaurant") ? "#000" : (c.category === "Groomer" ? "#000" : "#fff");
 
     let googleLinkHTML = "";
+    let reviewsHTML = "";
     if (c.category === "Restaurant") {
         let gUrl = "";
         if (c.place_id) {
@@ -768,7 +779,27 @@ function popupHTML(c, st) {
             const query = encodeURIComponent(`${c.name} ${c.address} Singapore`);
             gUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
         }
-        googleLinkHTML = `<a class="btn-link" href="${gUrl}" target="_blank" rel="noopener" style="background:#4285F4; margin-top:8px; width:100%; box-sizing:border-box; display:block; padding:10px;">📖 Read Reviews & Menu</a>`;
+        googleLinkHTML = `<a class="btn-link" href="${gUrl}" target="_blank" rel="noopener" style="background:#4285F4; margin-top:8px; width:100%; box-sizing:border-box; display:block; padding:10px; text-align:center; font-weight:800; border-radius:10px;">📖 Read More on Google Maps</a>`;
+
+            if (false) {
+            reviewsHTML = `<div style="margin-top:12px; border-top:2px dashed #EEE; padding-top:10px;">
+                <div style="font-weight:800; color:#4285F4; font-size:13px; margin-bottom:8px;">📝 Top Google Reviews</div>`;
+            c.reviews.forEach(r => {
+                let stars = "★".repeat(Math.round(r.rating)) + "☆".repeat(5 - Math.round(r.rating));
+                let author = r.authorAttribution ? r.authorAttribution.displayName : "Anonymous";
+                let text = r.text ? r.text.text : "";
+                let time = r.relativePublishTimeDescription || "";
+                reviewsHTML += `<div style="margin-bottom:8px; background:#F9FBFD; padding:8px; border-radius:8px; border:1px solid #E1E8ED;">
+                    <div style="display:flex; justify-content:space-between; font-size:11px; font-weight:800; margin-bottom:4px;">
+                        <span style="color:#333;">${esc(author)}</span>
+                        <span style="color:#FFB300;">${stars}</span>
+                    </div>
+                    <div style="font-size:12px; color:#555; margin-bottom:4px;">"${esc(text)}"</div>
+                    <div style="font-size:10px; color:#90A4AE; text-align:right;">${esc(time)}</div>
+                </div>`;
+            });
+            reviewsHTML += `</div>`;
+        }
     }
 
     return `<div class="popup">
@@ -781,6 +812,7 @@ function popupHTML(c, st) {
       <div style="margin-top:10px; border-top:2px dashed #EEE; padding-top:10px;">
         ${phoneHTML}
         ${googleLinkHTML}
+        ${reviewsHTML}
       </div>
     </div>`;
   }
