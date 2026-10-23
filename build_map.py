@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V36 - FIXED GOOGLE BUTTON WIDTH)
+# build_map.py  —  MyBuddy Pet Finder (V37 - NEW GOOGLE PLACES API)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -177,23 +177,37 @@ def geocode_location(postal, address, name, cache):
             return coords
     return None
 
+# --- NEW GOOGLE PLACES API (V1) ---
 def fetch_google_data(name, address, postal):
     if GOOGLE_API_KEY == "PASTE_YOUR_NEW_API_KEY_HERE": return None, None, None, None, None
+    
+    url = "https://places.googleapis.com/v1/places:searchText"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_API_KEY,
+        "X-Goog-FieldMask": "places.displayName,places.location,places.rating,places.userRatingCount,places.id"
+    }
+    
     queries = [f"{name} {postal} Singapore", f"{name} Singapore", f"{postal} Singapore", f"{address} Singapore"]
+    
     for q in queries:
         if not q.strip() or q.strip() == "Singapore": continue
-        url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={urllib.parse.quote(q)}&key={GOOGLE_API_KEY}"
+        
+        payload = {"textQuery": q}
+        
         try:
-            req = urllib.request.Request(url)
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
             with urllib.request.urlopen(req, timeout=5) as r:
                 data = json.loads(r.read().decode("utf-8"))
-                if data.get("results"):
-                    first = data["results"][0]
-                    loc = first.get("geometry", {}).get("location", {})
-                    if loc.get("lat") and loc.get("lng"):
-                        return (first.get("rating", 0), first.get("user_ratings_total", 0), 
-                                loc.get("lat"), loc.get("lng"), first.get("place_id", ""))
+                if data.get("places"):
+                    first = data["places"][0]
+                    loc = first.get("location", {})
+                    if loc.get("latitude") and loc.get("longitude"):
+                        return (first.get("rating", 0), first.get("userRatingCount", 0), 
+                                loc.get("latitude"), loc.get("longitude"), first.get("id", ""))
         except Exception: pass
+            
     return None, None, None, None, None
 
 def write_pwa_files():
@@ -1171,3 +1185,7 @@ if (unresolved) console.log("Unresolved coords: " + unresolved);
 </script>
 </body>
 </html>
+'''
+
+if __name__ == "__main__":
+    build()
