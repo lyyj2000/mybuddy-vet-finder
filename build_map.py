@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V34 - TRANSPORT ONLY FOR VETS)
+# build_map.py  —  MyBuddy Pet Finder (V36 - FIXED GOOGLE BUTTON WIDTH)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -478,7 +478,10 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
   #mobile-rating-val { font-size: 13px; font-weight: 800; color: #FF9800; min-width: 60px; text-align: right; }
   
   #mobile-radius-slider { display: block; position: fixed; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); left: 12px; right: 12px; z-index: 2500; background: rgba(255,255,255,0.95); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,.2); padding: 10px 16px; }
-  #mobile-radius-slider input { width: 100%; accent-color: #4CAF50; }
+  .mobile-slider-wrap { display: flex; align-items: center; gap: 10px; }
+  #mobile-radius-input { flex: 1; accent-color: #4CAF50; }
+  .mobile-radius-label { font-size: 12px; font-weight: 800; color: #4CAF50; white-space: nowrap; }
+  #mobile-radius-val { font-size: 12px; font-weight: 800; color: #4CAF50; min-width: 40px; text-align: right; }
 
   #mobile-dir-dropdown { display: none; position: absolute; top: 52px; left: 0; right: 0; background: #fff; border-radius: 16px; box-shadow: 0 8px 25px rgba(0,0,0,.2); max-height: 65vh; overflow-y: auto; z-index: 2600; }
   #mobile-dir-dropdown.open { display: block; }
@@ -521,7 +524,11 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
 </div>
 
 <div id="mobile-radius-slider">
-  <input id="mobile-radius-input" type="range" min="1" max="30" value="2" step="1">
+  <div class="mobile-slider-wrap">
+    <span class="mobile-radius-label">Radius</span>
+    <input id="mobile-radius-input" type="range" min="1" max="30" value="2" step="1">
+    <span id="mobile-radius-val">2 km</span>
+  </div>
 </div>
 
 <section id="panel">
@@ -706,7 +713,6 @@ function popupHTML(c, st) {
 
   const phoneHTML = c.phone ? `<a class="btn-link" href="tel:${primaryPhone(c.phone)}">📞 Call ${esc(c.phone.split('/')[0].trim())}</a>` : '';
 
-  // TRANSPORT ONLY FOR VETS
   let transportHtml = "";
   if (c.category === "Vet") {
       transportHtml = `
@@ -748,7 +754,7 @@ function popupHTML(c, st) {
             const query = encodeURIComponent(`${c.name} ${c.address} Singapore`);
             gUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
         }
-        googleLinkHTML = `<a class="btn-link" href="${gUrl}" target="_blank" rel="noopener" style="background:#4285F4; margin-top:8px; width:100%;">📖 Read Reviews & Menu</a>`;
+        googleLinkHTML = `<a class="btn-link" href="${gUrl}" target="_blank" rel="noopener" style="background:#4285F4; margin-top:8px; width:100%; box-sizing:border-box; display:block; padding:10px;">📖 Read Reviews & Menu</a>`;
     }
 
     return `<div class="popup">
@@ -964,6 +970,9 @@ document.getElementById("radius").addEventListener("input", e => {
   const km = parseFloat(e.target.value);
   centreCircle.setRadius(km * 1000);
   document.getElementById("radiusVal").textContent = km.toFixed(1) + " km";
+  if (document.getElementById("mobile-radius-val")) {
+      document.getElementById("mobile-radius-val").textContent = km.toFixed(1) + " km";
+  }
   updateVisibility();
 });
 
@@ -974,6 +983,7 @@ if (mobileRadiusInput) {
         centreCircle.setRadius(km * 1000);
         document.getElementById("radius").value = km; 
         document.getElementById("radiusVal").textContent = km.toFixed(1) + " km";
+        document.getElementById("mobile-radius-val").textContent = km.toFixed(1) + " km";
         updateVisibility();
     });
 }
@@ -1161,7 +1171,3 @@ if (unresolved) console.log("Unresolved coords: " + unresolved);
 </script>
 </body>
 </html>
-'''
-
-if __name__ == "__main__":
-    build()
