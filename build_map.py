@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V31 - SMART POSTAL CODE SEARCH)
+# build_map.py  —  MyBuddy Pet Finder (V33 - FUNERAL SERVICES & TRANSPORT)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -226,6 +226,29 @@ def build():
         places_data.extend(read_sheet(wb_rest, 0))
     except Exception as e: print(f"Warning: Could not load {WORKBOOK_REST} - {e}")
 
+    # --- SCAN FOR FUNERAL/CREMATION SERVICES ---
+    funeral_keywords = ["funeral", "cremation", "cremate", "memorial"]
+    funeral_vets = set()
+    
+    # Check VET_SERVICES
+    for r in services_data:
+        mbv = str(r.get("MyBuddy Vet ID") or "").strip()
+        if not mbv: continue
+        row_text = " ".join(str(v).lower() for v in r.values() if v is not None)
+        if any(kw in row_text for kw in funeral_keywords):
+            funeral_vets.add(mbv)
+            
+    # Check MASTER_LIST just in case it's listed there
+    for r in master:
+        mbv = str(r.get("MyBuddy Vet ID") or "").strip()
+        if not mbv: continue
+        row_text = " ".join(str(v).lower() for v in r.values() if v is not None)
+        if any(kw in row_text for kw in funeral_keywords):
+            funeral_vets.add(mbv)
+            
+    print(f"Found {len(funeral_vets)} vets offering funeral/cremation services.")
+    # -------------------------------------------
+
     hours_by_id = {r["MyBuddy Vet ID"]: r for r in hours if r.get("MyBuddy Vet ID")}
     prices_by_id = {}
     for p in prices_data:
@@ -273,7 +296,8 @@ def build():
             "lat": None, "lng": None, "rating": r.get("Google Rating") or 0,
             "review_count": r.get("Review Count") or 0, "is_appt": is_appt,
             "prices": prices_by_id.get(mbv, []), "species": species_by_id.get(mbv, []),
-            "hours_text": "", "place_id": ""
+            "hours_text": "", "place_id": "",
+            "has_funeral": mbv in funeral_vets
         })
 
     # 2. PROCESS PLACES
@@ -305,7 +329,7 @@ def build():
             "ecat": "", "schedule": {}, "house_call": False, "hospice": False,
             "lat": lat_val, "lng": lng_val, "rating": rating_val, "review_count": 0, "is_appt": False,
             "prices": [], "species": [], "hours_text": str(p.get("Operating Hours") or "").strip(),
-            "place_id": ""
+            "place_id": "", "has_funeral": False
         })
 
     cache = {}
@@ -432,6 +456,7 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
 .price-list { max-height: 120px; overflow-y: auto; background: #F9FBFD; padding: 10px; border-radius: 10px; font-size: 12px; border: 1px solid #E1E8ED; margin-top: 8px; }
 .price-item { padding: 4px 0; border-bottom: 1px dashed #E0E0E0; font-weight: 600; color: #555; }
 .price-item:last-child { border-bottom: none; }
+.main-action-btn { display: block; text-align: center; background: #2196F3; color: #fff !important; text-decoration: none; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
 
 .slider-container { display: flex; align-items: center; gap: 10px; margin-top: 6px; background: #fff; border: 2px solid #E0E0E0; padding: 8px 12px; border-radius: 14px; }
 .slider-container input[type=range] { flex: 1; accent-color: #FF9800; cursor: pointer; }
@@ -617,6 +642,63 @@ window.reportPrice = function(id, name) {
     window.location.href = `mailto:${PRICE_EMAIL}?subject=${subject}&body=${body}`;
 }
 
+window.renderTransport = function(clinicId, type) {
+  const resBox = document.getElementById('transport-res-' + clinicId);
+  if (!resBox) return;
+
+  if (resBox.style.display === 'block' && resBox.dataset.type === type) {
+    resBox.style.display = 'none';
+    return;
+  }
+
+  resBox.style.display = 'block';
+  resBox.dataset.type = type;
+
+  const data = TRANSPORT_DATA[type] || [];
+  if (!data.length) {
+    resBox.innerHTML = "<i>No providers listed.</i>";
+    return;
+  }
+
+  let html = '<div style="padding:4px 0;">';
+  data.forEach(p => {
+    let linkHtml = "";
+    if (p.url.startsWith('grab://')) {
+        linkHtml = `<a class="main-action-btn" href="javascript:void(0)" onclick="window.location.href='${p.url}'; setTimeout(function(){ window.location.href='${p.fallback}'; }, 500);">${p.action}</a>`;
+    } else {
+        linkHtml = `<a class="main-action-btn" href="${p.url}" target="_blank">${p.action}</a>`;
+    }
+
+    html += `<div style="margin-bottom:12px; border-bottom:1px solid #EEE; padding-bottom:10px;">
+        <div style="margin-bottom:6px;"><b>${p.provider}</b> <span style="color:#90A4AE; font-size:11px;">(${p.type})</span></div>
+        ${linkHtml}
+        ${p.note ? `<div style="color:#555; font-size:12px; font-weight:700; margin-top:6px; line-height:1.4; background:#fff; padding:8px; border-radius:8px; border:1px solid #EEE;">${p.note}</div>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+  resBox.innerHTML = html;
+};
+
+const TRANSPORT_DATA = {
+  pet: [
+    {
+      provider: "GrabPet",
+      type: "Pet Transport",
+      action: "Book a GrabPet Ride",
+      url: "grab://open?screenType=TRANSPORT",
+      fallback: "https://www.grab.com",
+      note: "👇 After clicking: Enter your destination, tap \"View All\", and scroll down to select GrabPet."
+    }
+  ],
+  ambulance: [
+    { provider: "Royal Animal Rescue", type: "Petbulance", action: "Call +65 9489 1781", url: "tel:+6594891781" },
+    { provider: "SPCA Community Emergencies", type: "Community Rescue", action: "Call +65 6287 5355 (Ext. 9)", url: "tel:+6562875355" }
+  ],
+  mobile: [
+    { provider: "Fur Folks Home / VetMobile", type: "Mobile Vet", action: "Call +65 9755 2015", url: "tel:+6597552015" }
+  ]
+};
+
 function popupHTML(c, st) {
   const color = st.key==="open" ? "#388E3C" : "#90A4AE";
   
@@ -625,6 +707,19 @@ function popupHTML(c, st) {
     : '';
 
   const phoneHTML = c.phone ? `<a class="btn-link" href="tel:${primaryPhone(c.phone)}">📞 Call ${esc(c.phone.split('/')[0].trim())}</a>` : '';
+
+  let transportHtml = `
+    <div style="margin-top:14px; border-top:2px dashed #EEE; padding-top:12px; margin-bottom:10px;">
+      <div style="font-weight:800; color:#388E3C; margin-bottom:8px; font-size:14px;">🚗 Need transport?</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+        <button class="trans-btn" style="background-color:#FFF9C4; color:#F57F17; border:1px solid #FFD54F; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'pet')">GrabPet</button>
+        <button class="trans-btn" style="background-color:#FFEBEE; color:#C62828; border:1px solid #FFCDD2; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'ambulance')">Petbulance</button>
+        <button class="trans-btn" style="background-color:#F3E5F5; color:#6A1B9A; border:1px solid #E1BEE7; font-weight:bold; padding:8px 12px; border-radius:10px; font-family:inherit; cursor:pointer; font-size:12px;" onclick="L.DomEvent.stopPropagation(event); renderTransport('${c.id}', 'mobile')">Mobile Vet</button>
+      </div>
+      <div id="transport-res-${c.id}" style="display:none; background:#F9FBFD; padding:10px; border-radius:10px; font-size:12px; border:1px solid #E1E8ED;"></div>
+      <div style="font-size:10px; color:#90A4AE; margin-top:6px; font-weight:700;">💡 MyBuddy takes 0% commission. Transport partners are independent.</div>
+    </div>
+  `;
 
   if (c.category !== "Vet") {
     let badgeColor = "#8B4513"; 
@@ -665,6 +760,7 @@ function popupHTML(c, st) {
         ${phoneHTML}
         ${googleLinkHTML}
       </div>
+      ${transportHtml}
     </div>`;
   }
 
@@ -675,6 +771,7 @@ function popupHTML(c, st) {
   if (c.house_call) badges.push('<span class="badge" style="background:#00897B">House calls</span>');
   if (c.hospice) badges.push('<span class="badge" style="background:#5d4037">Hospice</span>');
   if (c.is_appt) badges.push('<span class="badge" style="background:#673AB7">📅 By Appointment</span>');
+  if (c.has_funeral) badges.push('<span class="badge" style="background:#4A148C">🪦 Funeral / Cremation</span>');
 
   let ratingHTML = c.rating > 0 ? `<div style="display:flex; align-items:center; gap:4px; margin:6px 0; font-size:13px; font-weight:800; color:#FF9800;"><span>⭐ ${parseFloat(c.rating).toFixed(1)}</span><span style="color:#90A4AE; font-weight:600; font-size:12px;">(${c.review_count} reviews)</span></div>` : "";
 
@@ -698,6 +795,7 @@ function popupHTML(c, st) {
     <div style="margin-top:10px; border-top:2px dashed #EEE; padding-top:10px;">
       ${phoneHTML}
     </div>
+    ${transportHtml}
     ${sibHTML}
   </div>`;
 }
