@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================================
-# build_map.py  —  MyBuddy Pet Finder (V29 - GUARANTEED GOOGLE LINKS)
+# build_map.py  —  MyBuddy Pet Finder (V30 - USER FEEDBACK REFINEMENTS)
 # ============================================================================
 import json, re, time, urllib.request, urllib.parse, random
 from pathlib import Path
@@ -480,7 +480,7 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
 
 <div id="mobile-top-bar">
   <div class="m-search-wrap">
-    <input id="mobile-search-input" placeholder="Search..." autocomplete="off">
+    <input id="mobile-search-input" placeholder="Search name or postal code..." autocomplete="off">
     <div id="mobile-dir-dropdown"></div>
   </div>
 </div>
@@ -488,9 +488,8 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
 <div id="mobile-species-bar">
   <button class="m-sp-btn cat-btn on" data-cat="Vet">🏥 Vets</button>
   <button class="m-sp-btn cat-btn" data-cat="Groomer">🌼 Groomers</button>
-  <button class="m-sp-btn cat-btn" data-cat="Park">🍃 Parks</button>
-  <button class="m-sp-btn cat-btn" data-cat="Mall">🛍️ Pet Mall</button>
   <button class="m-sp-btn cat-btn" data-cat="Restaurant">🍴 Dine with Pets</button>
+  <button class="m-sp-btn cat-btn" data-cat="Mall">🛍️ Pet Mall</button>
 </div>
 
 <div id="mobile-rating-bar">
@@ -521,15 +520,11 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
       </div>
 
       <div class="filters" style="margin-top: 6px;">
-        <button class="chip cat-btn" data-cat="Park" style="width: 100%; font-size: 14px; padding: 10px;">🍃 Parks</button>
-      </div>
-
-      <div class="filters" style="margin-top: 6px;">
         <button class="chip cat-btn" data-cat="Mall" style="width: 100%; font-size: 14px; padding: 10px;">🛍️ Pet Mall</button>
       </div>
 
       <div class="search-wrap" style="margin-top: 16px;">
-        <input id="search" class="input" placeholder="Search name...">
+        <input id="search" class="input" placeholder="Search name or postal code...">
         <div id="directory" class="directory"></div>
       </div>
 
@@ -552,7 +547,7 @@ p.sub{font-size:12px;color:#90A4AE;margin:0 0 10px;font-weight:600}
         <span class="dot" style="background:#4CAF50"></span>Open / Vet<br>
         <span class="dot" style="background:#90A4AE"></span>Closed / Unknown<br>
         <span class="dot" style="background:#F44336"></span>24/7 Emergency<br>
-        <span class="dot" style="background:#FFEB3B"></span>Groomer &bull; <span class="dot" style="background:#8BC34A"></span>Park &bull; <span class="dot" style="background:#FFB300"></span>Mall &bull; <span class="dot" style="background:#fff; border: 2px solid #000;"></span>Dining
+        <span class="dot" style="background:#FFEB3B"></span>Groomer &bull; <span class="dot" style="background:#8BC34A"></span>Park (Always On) &bull; <span class="dot" style="background:#FFB300"></span>Mall &bull; <span class="dot" style="background:#fff; border: 2px solid #000;"></span>Dining
       </div>
 
       <div id="status">Ready to sniff out a place! 🐶</div>
@@ -734,13 +729,22 @@ function updateVisibility() {
     const isEmergency = c.ecat === "E1_CONFIRMED_24_7";
     
     let show = true;
-    if (currentCategory !== "All" && c.category !== currentCategory) show = false;
     
-    if (show && hasSearch) show = c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q);
+    // PARKS ALWAYS SHOW unless searching
+    if (c.category !== "Park" && currentCategory !== "All" && c.category !== currentCategory) show = false;
+    
+    if (show && hasSearch) {
+        let match = c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q);
+        // Postal Code Search
+        if (!match && /^\d{6}$/.test(q)) {
+            match = (c.postal === q);
+        }
+        show = match;
+    }
     
     if (show && !isEmergency && currentCategory === "Vet" && currentFilter === "open" && st.key !== "open") show = false;
     
-    if (show && currentSpecies !== "all" && currentCategory === "Vet") {
+    if (show && currentSpecies !== "all" && currentCategory === "Vet" && c.category === "Vet") {
       const sp = c.species || [];
       if (sp.length > 0 && !sp.includes(currentSpecies)) show = false;
     }
@@ -750,7 +754,10 @@ function updateVisibility() {
     }
     
     if (show && !isEmergency && !hasSearch && (currentCategory === "Vet" || currentCategory === "Groomer" || currentCategory === "Restaurant")) {
-      show = map.distance(centre, m.marker.getLatLng()) <= radius;
+      // Radius applies to Vets, Groomers, and Restaurants, but NOT Parks or Malls
+      if (c.category !== "Park" && c.category !== "Mall") {
+          show = map.distance(centre, m.marker.getLatLng()) <= radius;
+      }
     }
 
     if (show) { if (!layer.hasLayer(m.marker)) layer.addLayer(m.marker); visible++; }
@@ -760,7 +767,6 @@ function updateVisibility() {
   let catName = currentCategory;
   if (currentCategory === "Vet") catName = "Vets";
   if (currentCategory === "Groomer") catName = "Groomers";
-  if (currentCategory === "Park") catName = "Parks";
   if (currentCategory === "Mall") catName = "Pet Malls";
   if (currentCategory === "Restaurant") catName = "Dine with Pets";
 
@@ -905,6 +911,9 @@ function buildMobileDropdown(filter = "") {
     const mDropdown = document.getElementById('mobile-dir-dropdown');
     const q = filter.toLowerCase();
     mDropdown.innerHTML = "";
+
+    // DISABLE DROPDOWN FOR MALL
+    if (currentCategory === "Mall") return;
     
     const letters = Object.keys(DATA.directory).sort();
     letters.forEach(letter => {
@@ -987,7 +996,3 @@ if (unresolved) console.log("Unresolved coords: " + unresolved);
 </script>
 </body>
 </html>
-'''
-
-if __name__ == "__main__":
-    build()
