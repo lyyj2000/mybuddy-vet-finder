@@ -996,3 +996,7 @@ if (unresolved) console.log("Unresolved coords: " + unresolved);
 </script>
 </body>
 </html>
+'''
+
+if __name__ == "__main__":
+    build()
