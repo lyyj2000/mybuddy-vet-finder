@@ -2,833 +2,999 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MyBuddy - Pet Passport</title>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 <style>
   * { box-sizing: border-box; }
-
   body { margin: 0; padding: 20px; font-family: 'Baloo 2', cursive; background: #e8edf0; color: #2C3E50; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-
   .container { width: 100%; max-width: 400px; background-color: #fdfcfa; border: 1px solid #C8E6C9; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.1); position: relative; overflow: hidden; }
-  .container::after { content: ""; position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; border: 2px solid rgba(56, 142, 60, 0.15); border-radius: 8px; pointer-events: none; z-index: 2; }
-
-  .globe-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 250px; height: 250px; opacity: 0.04; z-index: 0; pointer-events: none; }
-
+  .container::after { content: ""; position: absolute; top: 8px; left: 8px; right: 8px; bottom: 8px; border: 2px solid rgba(56,142,60,.15); border-radius: 8px; pointer-events: none; z-index: 2; }
+  .globe-watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 250px; height: 250px; opacity: .04; z-index: 0; pointer-events: none; }
   .stamp { position: absolute; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-weight: 800; line-height: 1.1; pointer-events: none; z-index: 0; border: 3px solid; text-transform: uppercase; }
-  .stamp-blue { color: rgba(33, 150, 243, 0.1); border-color: rgba(33, 150, 243, 0.1); }
-  .stamp-red { color: rgba(244, 67, 54, 0.1); border-color: rgba(244, 67, 54, 0.1); }
-  .stamp-purple { color: rgba(156, 39, 176, 0.08); border-color: rgba(156, 39, 176, 0.08); border-style: dashed; }
-  .stamp-orange { color: rgba(255, 152, 0, 0.1); border-color: rgba(255, 152, 0, 0.1); }
-  .stamp-teal { color: rgba(0, 150, 136, 0.08); border-color: rgba(0, 150, 136, 0.08); border-style: dashed; }
-  .stamp-green { color: rgba(56, 142, 60, 0.1); border-color: rgba(56, 142, 60, 0.1); }
-
+  .stamp-blue { color: rgba(33,150,243,.1); border-color: rgba(33,150,243,.1); }
+  .stamp-red { color: rgba(244,67,54,.1); border-color: rgba(244,67,54,.1); }
   .stamp-1 { top: 15px; left: 15px; width: 85px; height: 85px; transform: rotate(-15deg); font-size: 10px; }
   .stamp-2 { top: 40px; right: 20px; width: 95px; height: 95px; transform: rotate(20deg); font-size: 11px; }
-  .stamp-3 { bottom: 60px; left: 20px; width: 90px; height: 90px; transform: rotate(25deg); font-size: 11px; }
-  .stamp-4 { bottom: 40px; right: 15px; width: 80px; height: 80px; transform: rotate(-10deg); font-size: 10px; }
-
   .content { position: relative; z-index: 1; padding: 30px 24px 10px 24px; }
   .logo { width: 120px; height: auto; display: block; margin: 0 auto 10px; }
   h1 { color: #388E3C; text-align: center; margin: 0 0 5px; font-weight: 800; font-size: 24px; letter-spacing: 1px; text-transform: uppercase; }
   p.subtitle { text-align: center; color: #90A4AE; margin-top: 0; margin-bottom: 20px; font-weight: 600; font-size: 13px; }
-
-  input, select { width: 100%; padding: 12px; border: 2px solid #E0E0E0; border-radius: 8px; font-family: inherit; font-size: 14px; margin-bottom: 12px; font-weight: 600; background: #fff; position: relative; z-index: 10; }
-  input:focus, select:focus { outline: none; border-color: #4CAF50; }
-
-  button { width: 100%; background: #388E3C; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-family: inherit; font-weight: 800; cursor: pointer; transition: 0.2s; position: relative; z-index: 10; }
+  input, select, textarea { width: 100%; padding: 12px; border: 2px solid #E0E0E0; border-radius: 8px; font-family: inherit; font-size: 14px; margin-bottom: 12px; font-weight: 600; background: #fff; position: relative; z-index: 10; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #4CAF50; }
+  button { width: 100%; background: #388E3C; color: #fff; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-family: inherit; font-weight: 800; cursor: pointer; transition: .2s; position: relative; z-index: 10; }
   button:hover { background: #2E7D32; }
-
+  button:disabled { opacity: .55; cursor: not-allowed; }
   .hidden { display: none !important; }
+  
+  /* TOKEN WALLET */
+  .Buddycoin-wallet { background: #388E3C; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; color: #fff; position: relative; z-index: 10; box-shadow: 0 4px 15px rgba(56, 142, 60, 0.3); display: flex; justify-content: space-between; align-items: center; }
+  .Buddycoin-wallet-left { flex: 1; }
+  .Buddycoin-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #FDE047; margin-bottom: 2px; }
+  .Buddycoin-balance { font-size: 28px; font-weight: 900; line-height: 1; display: flex; align-items: center; gap: 8px; color: #FDE047; }
+  .Buddycoin-icon { font-size: 24px; }
+  .Buddycoin-wallet-btn { width: auto !important; background: #fff; color: #D97706; border: none; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; font-family: 'Baloo 2', cursive; cursor: pointer; transition: 0.2s; }
+  .Buddycoin-wallet-btn:hover { background: #FFFBEB; transform: scale(1.05); }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-  /* Social Checkboxes */
   .social-checkboxes { margin-bottom: 15px; text-align: left; z-index: 10; position: relative; }
   .social-checkbox { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 14px; font-weight: 600; color: #2C3E50; }
   .social-checkbox input[type="checkbox"] { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: #388E3C; }
   .social-checkbox a { color: #388E3C; text-decoration: underline; }
 
   /* PASSPORT CARD */
-  .pet-card { 
-    background-color: #F4F9F4; 
-    border-radius: 8px; 
-    margin-bottom: 25px; 
-    position: relative; 
-    z-index: 10; 
-    border: 2px solid #388E3C; 
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-  }
-  
-  .skyline-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url('skyline.png'); background-position: center 30%; background-repeat: no-repeat; background-size: 120% auto; opacity: 0.25; mix-blend-mode: multiply; z-index: 0; pointer-events: none; }
-
-  .passport-inner { position: relative; z-index: 10; padding: 12px 18px; font-family: Arial, sans-serif; background: transparent; }
-  
-  .passport-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(56, 142, 60, 0.3); padding-bottom: 8px; margin-bottom: 12px; position: relative; }
+  .pet-card { background-color: #F4F9F4; border-radius: 8px; margin-bottom: 25px; position: relative; z-index: 10; border: 2px solid #388E3C; box-shadow: 0 5px 15px rgba(0,0,0,.1); display: flex; flex-direction: column; width: 100%; }
+  .skyline-bg { position: absolute; inset: 0; background-image: url('skyline.png'); background-position: center 30%; background-repeat: no-repeat; background-size: 120% auto; opacity: .25; mix-blend-mode: multiply; z-index: 0; pointer-events: none; border-radius: inherit; }
+  .passport-inner { position: relative; z-index: 10; padding: 12px 18px; font-family: Arial, sans-serif; }
+  .passport-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(56,142,60,.3); padding-bottom: 8px; margin-bottom: 12px; padding-right: 75px; position: relative; }
   .header-text { flex-grow: 1; }
   .passport-header h2 { margin: 0; font-size: 10px; color: #388E3C; letter-spacing: 1px; font-weight: bold; }
   .passport-header h3 { margin: 2px 0 0 0; font-size: 15px; color: #388E3C; letter-spacing: 1px; font-weight: 900; }
-  
   .qr-position { width: 50px; height: 50px; background: #fff; border: 1px solid #ccc; padding: 2px; border-radius: 4px; flex-shrink: 0; margin-left: 10px; }
   .qr-position img, .qr-position canvas { width: 100%; height: 100%; display: block; }
-
-  .passport-body { display: flex; gap: 12px; margin-bottom: 10px; }
+  .passport-body { display: flex; gap: 12px; margin-bottom: 8px; }
   .passport-photo { width: 75px; height: 100px; object-fit: cover; border: 2px solid #ccc; background: #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; color: #fff; flex-shrink: 0; }
-  
-  .passport-data { flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
-  .data-group { display: flex; flex-direction: column; }
+  .passport-data { flex-grow: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; min-width: 0; }
+  .data-group { display: flex; flex-direction: column; min-width: 0; }
   .data-group.full { grid-column: span 2; }
-  .data-label { font-size: 8px; color: #666; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; }
-  .data-value { font-size: 12px; color: #111; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 2px; min-height: 16px; }
+  .data-label { font-size: 7px; color: #666; text-transform: uppercase; font-weight: bold; letter-spacing: .5px; }
+  .data-value { font-size: 11px; color: #111; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 2px; min-height: 15px; word-break: break-word; }
   
-  .passport-mrz { background: #fff; padding: 6px 8px; border: 1px solid #ccc; font-family: 'Courier New', Courier, monospace; font-size: 9px; font-weight: bold; color: #111; letter-spacing: 0.5px; line-height: 1.2; overflow: hidden; border-radius: 4px; margin-bottom: 6px; position: relative; }
-  .passport-mrz div { white-space: nowrap; width: 100%; overflow: hidden; text-overflow: clip; }
+  .medical-panel { background: rgba(255,255,255,0.7); border: 1px solid #C8E6C9; border-radius: 4px; padding: 6px 8px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+  .medical-panel .data-label { color: #388E3C; }
+  .medical-panel .data-value { border-bottom: none; font-size: 10px; color: #222; }
+  
+  .signature-zone { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 6px; margin-top: 10px; }
+  .signature-box { width: 55%; border-top: 1px solid #999; padding-top: 2px; text-align: center; font-size: 7px; color: #666; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; }
+  .barcode-box { height: 30px; width: 40%; display: flex; justify-content: flex-end; align-items: flex-end; }
+  .barcode-box svg { max-width: 100%; max-height: 100%; }
+  .passport-mrz { background: #fff; padding: 6px 8px; border: 1px solid #ccc; font-family: 'Courier New', Courier, monospace; font-size: 9px; font-weight: bold; color: #111; letter-spacing: .5px; line-height: 1.25; overflow: hidden; border-radius: 4px; margin-bottom: 6px; }
+  .passport-mrz div { white-space: nowrap; width: 100%; overflow: hidden; }
+  .passport-disclaimer { text-align: center; font-size: 7px; color: #888; text-transform: uppercase; letter-spacing: .5px; }
 
-  .passport-disclaimer { text-align: center; font-size: 7px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; position: relative; }
+  .stamp-seal-img { position: absolute; top: 10px; right: 10px; width: 75px; height: 75px; z-index: 20; pointer-events: none; transform: rotate(15deg); filter: drop-shadow(0px 5px 8px rgba(0,0,0,0.4)); display: block; }
 
-  /* WAX SEALS (Image Version) */
-  .stamp-seal-img {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 85px;
-    height: 85px;
-    z-index: 20;
-    pointer-events: none;
-    transform: rotate(15deg);
-    filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3));
-  }
+  /* LOST BANNER */
+  .lost-banner { position: relative; z-index: 5; padding: 14px 18px 14px 16px; background: linear-gradient(135deg, #B71C1C 0%, #E53935 100%); color: #fff; display: flex; gap: 12px; align-items: center; border-bottom: 3px solid #7F0000; border-radius: 6px 6px 0 0; }
+  .lost-banner-text { flex: 1; min-width: 0; }
+  .lost-banner-title { font-size: 16px; font-weight: 900; letter-spacing: 1px; margin-bottom: 5px; }
+  .lost-banner-row { font-size: 11px; font-weight: 700; margin-bottom: 2px; overflow-wrap: anywhere; }
+  .lost-banner-row strong { display: inline-block; min-width: 58px; font-size: 9px; opacity: .85; letter-spacing: .5px; text-transform: uppercase; }
+  .lost-banner-phone { font-size: 13px; font-weight: 800; }
+  .lost-banner-phone a { color: #fff; text-decoration: underline; }
+  .lost-banner-qr { width: 66px; height: 66px; background: #fff; padding: 3px; border-radius: 6px; flex-shrink: 0; margin-right: 85px; }
+  .lost-banner-qr canvas, .lost-banner-qr img { width: 60px; height: 60px; display: block; }
 
-  /* PET SECRETARY PANEL */
-  .secretary-panel {
-    background: #F8FAFC;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 12px;
-    font-family: 'Arial', sans-serif;
-    position: relative;
-    z-index: 10;
-  }
-  .secretary-title {
-    font-size: 12px;
-    font-weight: 800;
-    color: #388E3C;
-    margin: 0 0 10px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .secretary-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-  .secretary-box {
-    background: #fff;
-    padding: 8px;
-    border-radius: 6px;
-    border: 1px solid #E2E8F0;
-  }
-  .secretary-box span {
-    display: block;
-    font-size: 9px;
-    color: #64748B;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-  .secretary-box strong {
-    display: block;
-    font-size: 14px;
-    color: #1E293B;
-    margin-top: 2px;
-  }
+  /* PET SECRETARY */
+  .secretary-panel { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; margin-top: 12px; font-family: Arial, sans-serif; position: relative; z-index: 10; }
+  .secretary-title { font-size: 12px; font-weight: 800; color: #388E3C; margin: 0 0 10px 0; display: flex; justify-content: space-between; align-items: center; }
+  .secretary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .secretary-box { background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #E2E8F0; }
+  .secretary-box span { display: block; font-size: 9px; color: #64748B; font-weight: 700; text-transform: uppercase; }
+  .secretary-box strong { display: block; font-size: 14px; color: #1E293B; margin-top: 2px; }
 
-  /* TRAVEL CHECKLIST DROPDOWN */
-  .travel-panel {
-    background: #fff;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    margin-top: 12px;
-    font-family: 'Arial', sans-serif;
-    position: relative;
-    z-index: 10;
-    overflow: hidden;
-  }
-  .travel-panel summary {
-    background: #F8FAFC;
-    padding: 12px;
-    font-size: 12px;
-    font-weight: 800;
-    color: #388E3C;
-    cursor: pointer;
-    list-style: none;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #E2E8F0;
-  }
+  /* TRAVEL CHECKLIST */
+  .travel-panel { background: #fff; border: 1px solid #E2E8F0; border-radius: 8px; margin-top: 12px; font-family: Arial, sans-serif; position: relative; z-index: 10; overflow: hidden; }
+  .travel-panel summary { background: #F8FAFC; padding: 12px; font-size: 12px; font-weight: 800; color: #388E3C; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #E2E8F0; }
   .travel-panel summary::-webkit-details-marker { display: none; }
-  .travel-panel summary::after { content: "▼"; font-size: 10px; color: #94A3B8; transition: 0.2s; }
+  .travel-panel summary::after { content: "▼"; font-size: 10px; color: #94A3B8; transition: .2s; }
   .travel-panel[open] summary::after { transform: rotate(180deg); }
-  
   .travel-content { padding: 12px; max-height: 250px; overflow-y: auto; }
   .travel-category { font-size: 10px; font-weight: 800; color: #64748B; text-transform: uppercase; margin: 10px 0 6px 0; }
   .travel-category:first-child { margin-top: 0; }
-  
-  .travel-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 6px;
-    font-size: 11px;
-    color: #334155;
-    line-height: 1.3;
-    cursor: pointer;
-  }
-  .travel-item input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
-    margin-top: 1px;
-    accent-color: #388E3C;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  .travel-item span { flex-grow: 1; }
+  .travel-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; font-size: 11px; color: #334155; line-height: 1.3; cursor: pointer; }
+  .travel-item input[type="checkbox"] { width: 14px; height: 14px; margin-top: 1px; accent-color: #388E3C; cursor: pointer; flex-shrink: 0; }
 
-  .action-buttons { 
-    padding: 12px 18px 18px 18px; 
-    position: relative; 
-    z-index: 10; 
-    background: transparent; 
-    border-top: 2px dashed rgba(56, 142, 60, 0.3);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    width: 100%;
-  }
-  
+  /* ACTION BUTTONS */
+  .action-buttons { padding: 12px 18px 18px 18px; position: relative; z-index: 10; background: transparent; border-top: 2px dashed rgba(56,142,60,.3); display: flex; flex-direction: column; gap: 8px; width: 100%; }
   .upgrade-btn { background: #fff; border: 2px solid #388E3C; color: #388E3C; padding: 10px; font-size: 14px; border-radius: 8px; font-family: 'Baloo 2', cursive; font-weight: 800; cursor: pointer; width: 100%; }
   .upgrade-btn:hover { background: #388E3C; color: #fff; }
   .download-btn { background: #388E3C !important; color: #fff !important; border: 2px solid #388E3C !important; }
   .delete-btn { background: #FFF !important; border: 2px solid #F44336 !important; color: #F44336 !important; }
   .delete-btn:hover { background: #F44336 !important; color: #FFF !important; }
 
-  /* CUSTOM ALERT BOX */
-  #custom-alert { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
-  .alert-box { background: #fff; padding: 30px 20px; border-radius: 20px; text-align: center; max-width: 320px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 2px solid #388E3C;}
-  .alert-box h2 { color: #388E3C; font-weight: 800; margin-top: 0; font-size: 24px; font-family: 'Baloo 2', cursive;}
-  
-  .alert-box p { 
-    color: #2C3E50; 
-    font-weight: 600; 
-    margin-bottom: 20px; 
-    line-height: 1.5; 
-    font-family: 'Baloo 2', cursive;
-    max-height: 50vh;
-    overflow-y: auto;
-    text-align: left;
-    white-space: pre-wrap;
-  }
+  .lost-btn { background: #FFF !important; border: 2px solid #E53935 !important; color: #E53935 !important; }
+  .lost-btn:hover { background: #E53935 !important; color: #FFF !important; }
+  .found-btn { background: #388E3C !important; color: #fff !important; border: 2px solid #388E3C !important; }
+  .found-btn:hover { background: #2E7D32 !important; }
+  .share-btn { background: #FFF !important; border: 2px solid #3B82F6 !important; color: #3B82F6 !important; }
+  .share-btn:hover { background: #3B82F6 !important; color: #FFF !important; }
 
-  /* NATIVE PRINT STYLES */
+  /* MODALS */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+  .alert-box { background: #fff; padding: 26px 20px; border-radius: 20px; text-align: center; max-width: 330px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,.2); border: 2px solid #388E3C; }
+  .alert-box h2 { color: #388E3C; font-weight: 800; margin: 0 0 8px; font-size: 22px; font-family: 'Baloo 2', cursive; }
+  .alert-box p { color: #2C3E50; font-weight: 600; margin: 0 0 18px; line-height: 1.5; font-family: 'Baloo 2', cursive; max-height: 50vh; overflow-y: auto; text-align: left; white-space: pre-wrap; }
+  .alert-actions { display: flex; gap: 8px; }
+  .btn-ghost { background: #fff !important; color: #F44336 !important; border: 2px solid #F44336 !important; }
+  .btn-ghost:hover { background: #F44336 !important; color: #fff !important; }
+  .picker-btn { background: #fff !important; color: #2C3E50 !important; border: 2px solid #C8E6C9 !important; font-weight: 800; padding: 10px; }
+  .picker-btn:hover { border-color: #388E3C !important; background: #F1F8F1 !important; }
+  .lost-label { display: block; font-size: 11px; font-weight: 800; color: #555; text-transform: uppercase; letter-spacing: .5px; margin: 10px 0 4px; text-align: left; }
+  #lost-modal .alert-box { border: 2px solid #E53935; }
+  #lost-modal h2 { color: #E53935; }
+  .geo-btn { background: #F8FAFC !important; color: #3B82F6 !important; border: 2px solid #BFDBFE !important; font-size: 13px !important; padding: 8px !important; margin-bottom: 8px; }
+
+  /* PRINT LAYOUTS */
+  #print-root, #poster-root { display: none; }
   @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; display: block !important; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { background: #fff; margin: 0; padding: 0; display: block; }
-    body * { visibility: hidden; }
-    .printing-now, .printing-now * { visibility: visible; }
-    .printing-now { position: fixed; left: 0; top: 0; width: 100%; max-width: 100%; margin: 0; box-shadow: none; border: 2px solid #388E3C !important; }
-    .printing-now .skyline-bg { mix-blend-mode: normal !important; opacity: 0.15 !important; }
-    .action-buttons, button { display: none !important; }
-    .secretary-panel, .travel-panel { border: 1px solid #ccc !important; }
-    .travel-content { max-height: none !important; overflow: visible !important; display: block !important; }
-    details { display: block !important; }
-    details > summary { display: block !important; }
-    details > div { display: block !important; }
+    body > *:not(#print-root):not(#poster-root) { display: none !important; }
+    #print-root, #poster-root { display: none !important; }
+
+    /* PASSPORT PRINT */
+    body.print-passport #print-root { display: block !important; }
+    body.print-passport #print-root .pet-card { width: 100% !important; max-width: 480px !important; margin: 0 auto !important; box-shadow: none !important; border: 2px solid #388E3C !important; display: block !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+    body.print-passport #print-root .passport-inner { display: block !important; }
+    body.print-passport #print-root .passport-body { display: flex !important; }
+    body.print-passport #print-root .passport-data { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 6px 10px !important; }
+    body.print-passport #print-root .action-buttons { display: none !important; }
+    body.print-passport #print-root .skyline-bg { opacity: .15 !important; mix-blend-mode: normal !important; }
+    body.print-checklist #print-root .travel-content { display: block !important; max-height: none !important; overflow: visible !important; }
+    body.print-checklist #print-root details { display: block !important; }
+    body.print-checklist #print-root details > summary { display: block !important; }
+
+    /* POSTER PRINT */
+    body.print-poster #poster-root { display: block !important; font-family: 'Baloo 2', cursive; text-align: center; }
+    .poster-container { border: 8px solid #E53935; border-radius: 12px; padding: 20px; width: 100%; height: 96vh; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; page-break-inside: avoid !important; break-inside: avoid !important; }
+    .poster-header { font-size: 65px; font-weight: 900; color: #E53935; line-height: 1; margin: 0; letter-spacing: 4px; text-transform: uppercase; }
+    .poster-name { font-size: 40px; font-weight: 800; margin: 10px 0 0; text-transform: uppercase; }
+    .poster-photo { width: 100%; max-height: 35vh; object-fit: contain; border-radius: 8px; margin: 10px auto; display: block; border: 4px solid #eee; }
+    .poster-details { font-size: 20px; font-weight: 700; color: #2C3E50; margin-bottom: 10px; }
+    .poster-details span { color: #E53935; font-weight: 900; }
+    .poster-reward { font-size: 24px; font-weight: 900; color: #F59E0B; margin-bottom: 10px; text-transform: uppercase; }
+    .poster-contact { background: #E53935; color: #fff; padding: 15px 20px; border-radius: 12px; font-size: 30px; font-weight: 900; margin-bottom: 15px; width: 100%; box-sizing: border-box; }
+    .poster-qr-wrapper { display: flex; align-items: center; justify-content: center; gap: 20px; margin-top: auto; }
+    .poster-qr { width: 100px; height: 100px; }
+    .poster-qr-text { font-size: 14px; font-weight: 800; color: #64748B; text-transform: uppercase; text-align: left; line-height: 1.2; }
+    
+    .bw-mode .poster-container { border-color: #000 !important; }
+    .bw-mode .poster-header { color: #000 !important; }
+    .bw-mode .poster-details span { color: #000 !important; }
+    .bw-mode .poster-reward { color: #000 !important; }
+    .bw-mode .poster-contact { background: #000 !important; color: #fff !important; }
   }
 </style>
 </head>
 <body>
 
-<a href="index.html" style="position:fixed; top:20px; left:20px; z-index:9999; background:#fff; color:#388E3C; border:2px solid #388E3C; padding:10px 15px; border-radius:30px; text-decoration:none; font-weight:800; font-family:'Baloo 2', cursive; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
-    🗺️ Back to Map
-</a>
+<a href="index.html" style="position:fixed; top:20px; left:20px; z-index:9999; background:#fff; color:#388E3C; border:2px solid #388E3C; padding:10px 15px; border-radius:30px; text-decoration:none; font-weight:800; font-family:'Baloo 2', cursive; box-shadow:0 4px 10px rgba(0,0,0,.1);">🗺️ Back to Map</a>
 
-<div id="custom-alert" class="hidden">
+<div id="print-root"></div>
+<div id="poster-root" class="hidden"></div>
+
+<!-- MODALS -->
+<div id="custom-alert" class="modal hidden">
   <div class="alert-box">
     <h2 id="alert-title">Welcome!</h2>
-    <p id="custom-alert-msg">Message goes here</p>
-    <button id="alert-btn" style="font-family:'Baloo 2', cursive;">Okay, Got It</button>
+    <p id="custom-alert-msg"></p>
+    <div class="alert-actions">
+      <button id="alert-cancel" class="btn-ghost hidden">Cancel</button>
+      <button id="alert-btn">Okay, Got It</button>
+    </div>
+  </div>
+</div>
+
+<div id="picker-modal" class="modal hidden">
+  <div class="alert-box">
+    <h2 id="picker-title">Which pet?</h2>
+    <div id="picker-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
+    <button id="picker-cancel" class="btn-ghost">Cancel</button>
+  </div>
+</div>
+
+<div id="lost-modal" class="modal hidden">
+  <div class="alert-box">
+    <h2 id="lost-modal-title">🚨 I Lost MyBuddy</h2>
+    <p style="font-size:12px; color:#64748B; text-align:center; margin:0 0 6px;">This adds a LOST banner and prepares a GPS pin for the map.</p>
+    <label class="lost-label" for="lost-location">Last seen location</label>
+    <input type="text" id="lost-location" placeholder="e.g. Tampines Ave 5" maxlength="80">
+    <button type="button" id="lost-geo-btn" class="geo-btn" onclick="getGeoLocation()">📍 Tag Current GPS Location</button>
+    <div style="display:flex; gap:10px;">
+      <div style="flex:1;"><label class="lost-label" for="lost-date">Date</label><input type="date" id="lost-date"></div>
+      <div style="flex:1;"><label class="lost-label" for="lost-reward">Reward (Optional)</label><input type="text" id="lost-reward" placeholder="e.g. $100" maxlength="20"></div>
+    </div>
+    <label class="lost-label" for="lost-phone">Contact phone</label>
+    <input type="tel" id="lost-phone" placeholder="e.g. +65 9123 4567" maxlength="20">
+    <label class="lost-label" for="lost-notes">Notes (optional)</label>
+    <textarea id="lost-notes" rows="2" maxlength="200" placeholder="e.g. Shy, please don't chase."></textarea>
+    <div class="alert-actions" style="margin-top:16px;">
+      <button id="lost-cancel" class="btn-ghost" style="flex:1;">Cancel</button>
+      <button id="lost-submit" style="flex:1; background:#E53935;">🚨 I Lost MyBuddy</button>
+    </div>
+  </div>
+</div>
+
+<!-- INVITE FRIENDS MODAL -->
+<div id="invite-modal" class="modal hidden">
+  <div class="alert-box" style="border-color: #3B82F6;">
+    <h2 style="color: #3B82F6;">🤝 Invite a Buddy</h2>
+    <p style="text-align: center; color: #64748B; font-size: 13px; margin-bottom: 15px;">Scan this QR code to sign up for MyBuddy! You'll earn +50 Buddycoins when they join.</p>
+    <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+        <div id="invite-qr" style="padding: 10px; background: white; border: 2px solid #E2E8F0; border-radius: 12px;"></div>
+    </div>
+    <input type="text" id="invite-link-input" readonly style="width: 100%; padding: 10px; background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; font-family: inherit; font-size: 12px; color: #334155; text-align: center; margin-bottom: 15px;">
+    <div class="alert-actions">
+      <button onclick="document.getElementById('invite-modal').classList.add('hidden')" class="btn-ghost" style="flex: 1; color: #64748B !important; border-color: #64748B !important;">Close</button>
+      <button onclick="copyReferralLink()" style="flex: 1; background: #3B82F6;">Copy Link</button>
+    </div>
   </div>
 </div>
 
 <!-- AUTH VIEW -->
 <div class="container" id="auth-view">
-  <svg class="globe-watermark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="50" r="45" stroke="#388E3C" stroke-width="1" fill="none"/><ellipse cx="50" cy="50" rx="20" ry="45" stroke="#388E3C" stroke-width="1" fill="none"/><line x1="5" y1="50" x2="95" y2="50" stroke="#388E3C" stroke-width="1"/>
-  </svg>
-  <div class="stamp stamp-blue stamp-1">JAPAN<br>ARRIVAL<br>2026</div>
-  <div class="stamp stamp-red stamp-2">USA<br>IMMIGRATION<br>APPROVED</div>
-
   <div class="content">
     <img src="logo.png" alt="MyBuddy Logo" class="logo">
     <h1>My Pet Passports</h1>
     <p class="subtitle">Official MyBuddy Travel Document</p>
-
     <input type="email" id="email" placeholder="Email address">
     <input type="password" id="password" placeholder="Password (min 6 characters)">
-
     <div class="social-checkboxes">
       <div class="social-checkbox">
         <input type="checkbox" id="follow-fb">
         <label for="follow-fb">Follow us on</label>
-        <a href="https://www.facebook.com/Mybuddy.sg" target="_blank">Facebook</a>
+        <a href="https://www.facebook.com/Mybuddy.sg" target="_blank" rel="noopener">Facebook</a>
       </div>
       <div class="social-checkbox">
         <input type="checkbox" id="follow-ig">
         <label for="follow-ig">Follow us on</label>
-        <a href="https://www.instagram.com/mybuddy_sg/" target="_blank">Instagram</a>
+        <a href="https://www.instagram.com/mybuddy_sg/" target="_blank" rel="noopener">Instagram</a>
       </div>
     </div>
-
-    <button onclick="signUp()" style="margin-bottom:8px;">Sign Up</button>
-    <button onclick="signIn()" style="background:#FFF; color:#388E3C; border: 2px solid #388E3C;">Log In</button>
+    <button id="btn-signup" onclick="signUp()" style="margin-bottom:8px;">Sign Up</button>
+    <button id="btn-signin" onclick="signIn()" style="background:#FFF; color:#388E3C; border: 2px solid #388E3C;">Log In</button>
   </div>
 </div>
 
 <!-- DASHBOARD VIEW -->
 <div class="container hidden" id="dashboard-view">
-  <svg class="globe-watermark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="50" cy="50" r="45" stroke="#388E3C" stroke-width="1" fill="none"/><ellipse cx="50" cy="50" rx="20" ry="45" stroke="#388E3C" stroke-width="1" fill="none"/><line x1="5" y1="50" x2="95" y2="50" stroke="#388E3C" stroke-width="1"/>
-  </svg>
-  <div class="stamp stamp-blue stamp-1">JAPAN<br>ARRIVAL<br>2026</div>
-  <div class="stamp stamp-red stamp-2">USA<br>IMMIGRATION<br>APPROVED</div>
-
   <div class="content">
     <h1>My Pet Passports</h1>
-    <p class="subtitle" id="user-email" style="color: #388E3C; font-weight: 800;"></p>
+    <p class="subtitle" id="user-email" style="color: #388E3C; font-weight: 800; margin-bottom: 15px;"></p>
     
+    <!-- TOKEN WALLET -->
+    <div class="Buddycoin-wallet">
+      <div class="Buddycoin-wallet-left">
+        <div class="Buddycoin-label" style="margin-bottom: 4px;">Buddycoin</div>
+        <div class="Buddycoin-balance"><span class="Buddycoin-icon">🪙</span> <span id="token-balance">0</span></div>
+        <div id="upgrade-reminder" style="font-size: 11px; color: #FDE047; font-weight: 800; margin-top: 6px; animation: pulse 1.5s infinite;"></div>
+      </div>
+      <button class="Buddycoin-wallet-btn" onclick="showTokenInfo()">Earn / Redeem</button>
+    </div>
+
+    <!-- WHATSAPP PANEL -->
+    <div id="whatsapp-panel" style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none;">
+        <h3 style="margin: 0 0 5px 0; color: #166534; font-size: 14px; font-weight: 800;">📱 Click & Connect Alerts</h3>
+        <p style="margin: 0 0 10px 0; color: #15803D; font-size: 12px;">Add your WhatsApp number to get alerted when your buddies drop a 'Click & Connect' pin nearby!</p>
+        <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+            <input type="tel" id="user-phone-input" placeholder="+65 9123 4567" style="flex: 1; min-width: 0; margin: 0; padding: 12px; border: 1px solid #86EFAC; border-radius: 6px; font-family: inherit; font-size: 13px; box-sizing: border-box;">
+            <button onclick="savePhoneNumber()" style="width: auto !important; flex: 0 0 auto; background: #10B981; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: 800; cursor: pointer; font-size: 13px; box-sizing: border-box; margin: 0;">Save</button>
+        </div>
+    </div>
+
+    <!-- BUDDY ALERTS PANEL -->
+    <div id="buddy-alerts-panel" style="background: #FFFBEB; border: 1px solid #FDE047; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none;">
+        <h3 style="margin: 0 0 10px 0; color: #D97706; font-size: 15px; font-weight: 800;">🔔 Buddy Alerts</h3>
+        <div id="buddy-alerts-list"></div>
+    </div>
+
+    <!-- CONNECTION REQUESTS PANEL -->
+    <div id="requests-panel" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none;">
+        <h3 style="margin: 0 0 10px 0; color: #388E3C; font-size: 15px; font-weight: 800;">🐾 Connection Requests</h3>
+        <div id="connection-requests-list"></div>
+    </div>
+
+    <!-- MY REPORTS PANEL -->
+    <div id="my-reports-panel" style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 15px; margin-bottom: 20px; display: none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 style="margin: 0; color: #388E3C; font-size: 15px; font-weight: 800;">📋 My Map Reports</h3>
+            <button id="user-history-btn" onclick="toggleUserReports()" style="width: auto; background: #E2E8F0; color: #475569; border: none; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; cursor: pointer;">View History</button>
+        </div>
+        <div id="my-reports-list"></div>
+    </div>
+
     <h3 style="margin-bottom:10px; color: #388E3C; font-weight: 800;">Registered Pets</h3>
     <div id="pets-list"></div>
 
-    <div style="margin-top:20px; border-top:1px dashed #C8E6C9; padding-top:20px;">
-      <h3 style="margin-top:0; margin-bottom:10px; color: #388E3C; font-weight: 800;">Add a Pet (Standard)</h3>
-      
-      <label style="font-size:12px; font-weight:800; color:#555;">Pet Photo</label>
-      <input type="file" id="pet-photo-input" accept="image/*" style="padding: 8px; background: #F9FBF9;">
-      
-      <input type="text" id="pet-name" placeholder="Pet Name (e.g. Bella)">
-      
-      <div style="display:flex; gap:10px;">
-        <select id="pet-species" style="flex:1;">
-          <option value="Dog">Dog</option>
-          <option value="Cat">Cat</option>
-          <option value="Bird">Bird</option>
-          <option value="Exotic">Exotic</option>
-        </select>
-        <select id="pet-sex" style="flex:1;">
-          <option value="M">Male (M)</option>
-          <option value="F">Female (F)</option>
-        </select>
-      </div>
-
-      <div style="display:flex; gap:10px;">
-        <div style="flex:1;">
-            <label style="font-size:12px; font-weight:800; color:#555;">Birthday</label>
-            <input type="date" id="pet-birthday">
+    <!-- ADD A PET ACCORDION -->
+    <details style="margin-top:20px; border-top:1px dashed #C8E6C9; padding-top:20px; cursor: pointer;">
+        <summary style="color: #388E3C !important; font-weight: 800 !important; font-size: 22px !important; outline: none !important; margin-bottom: 15px !important; padding: 10px 0 !important; cursor: pointer !important;">
+            ➕ Add Another Buddy of Mine
+        </summary>
+        <div style="cursor: default; padding-top: 10px;">
+            <label style="font-size:12px; font-weight:800; color:#555;">Pet Photo</label>
+            <input type="file" id="pet-photo-input" accept="image/*" style="padding: 8px; background: #F9FBF9;">
+            <input type="text" id="pet-name" placeholder="Pet Name (e.g. Bella)" maxlength="24">
+            <div style="display:flex; gap:10px;">
+                <select id="pet-species" style="flex:1;">
+                    <option value="Dog">Dog</option>
+                    <option value="Cat">Cat</option>
+                    <option value="Bird">Bird</option>
+                    <option value="Exotic">Exotic</option>
+                </select>
+                <select id="pet-sex" style="flex:1;">
+                    <option value="M">Male (M)</option>
+                    <option value="F">Female (F)</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;"><label style="font-size:12px; font-weight:800; color:#555;">Birthday</label><input type="date" id="pet-birthday"></div>
+                <div style="flex:1;"><label style="font-size:12px; font-weight:800; color:#555;">Weight (kg)</label><input type="number" id="pet-weight" placeholder="e.g. 12.5" step="0.1"></div>
+            </div>
+            <label style="font-size:12px; font-weight:800; color:#555;">Microchip Number (Optional)</label>
+            <input type="text" id="pet-microchip" placeholder="15-digit ISO Microchip" maxlength="15">
+            <label style="font-size:12px; font-weight:800; color:#555;">Owner Phone</label>
+            <input type="tel" id="pet-owner-phone" placeholder="+65 9123 4567" maxlength="20">
+            <div style="display:flex; gap:10px;">
+                <div style="flex:1;"><label style="font-size:12px; font-weight:800; color:#555;">Allergies</label><input type="text" id="pet-allergies" placeholder="e.g. Penicillin" maxlength="30"></div>
+                <div style="flex:1;"><label style="font-size:12px; font-weight:800; color:#555;">Markings</label><input type="text" id="pet-markings" placeholder="e.g. White chest" maxlength="30"></div>
+            </div>
+            <button id="btn-addpet" onclick="addPet()" style="margin-top:10px;">Add Pet</button>
         </div>
-        <div style="flex:1;">
-            <label style="font-size:12px; font-weight:800; color:#555;">Weight (kg)</label>
-            <input type="number" id="pet-weight" placeholder="e.g. 12.5" step="0.1">
-        </div>
-      </div>
+    </details>
 
-      <label style="font-size:12px; font-weight:800; color:#555;">Microchip Number (Optional)</label>
-      <input type="text" id="pet-microchip" placeholder="15-digit ISO Microchip" maxlength="15">
-
-      <button onclick="addPet()" style="margin-top:10px;">Add Pet</button>
+    <!-- GLOBAL ACTION BUTTONS -->
+    <div style="display: flex; gap: 8px; width: 100%; margin-top: 20px;">
+        <button onclick="deleteFirstPet()" style="flex: 1; background:#fff; color:#F44336; border:2px solid #F44336; border-radius:8px; font-weight:800; cursor:pointer; font-family:'Baloo 2', cursive; font-size:13px; padding: 12px; margin: 0; transition: 0.2s;" onmouseover="this.style.background='#F44336'; this.style.color='#fff';" onmouseout="this.style.background='#fff'; this.style.color='#F44336';">
+            🗑️ Delete Passport
+        </button>
+        <button onclick="signOut()" style="flex: 1; background:#fff; color:#F44336; border:2px solid #F44336; border-radius:8px; font-weight:800; cursor:pointer; font-family:'Baloo 2', cursive; font-size:13px; padding: 12px; margin: 0; transition: 0.2s;" onmouseover="this.style.background='#F44336'; this.style.color='#fff';" onmouseout="this.style.background='#fff'; this.style.color='#F44336';">
+            Log Out
+        </button>
     </div>
-    
-    <button onclick="signOut()" style="background:#fff; color:#F44336; border:2px solid #F44336; margin-top:20px;">Log Out</button>
+
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // --- CONFIG ---
   const SUPABASE_URL = "https://iriquwemmnvdorubcksi.supabase.co";
   const SUPABASE_KEY = "sb_publishable_RgPoktjsKsFBoD-0_l0-ig_Gh4SaZSh"; 
   const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   let currentUser = null;
   window.userProfile = null;
+  let busy = false;
+  let petsCache = [];
+  let showUserHistory = false;
+  const TOKEN_THRESHOLD = 100;
 
-  // --- HELPERS ---
-  function esc(s) { return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-  function pad(s, n) { return String(s).padEnd(n, '<').slice(0, n); }
+  // =====================================================================
+  //  SANITIZATION HELPERS
+  // =====================================================================
+  function esc(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+  }
+  function cleanText(v, maxLen) {
+    return String(v ?? "").replace(/[\u0000-\u001F\u007F\u200B-\u200F\u2028\u2029]/g, "").replace(/[<>{}\\]/g, "").replace(/\s+/g, " ").trim().slice(0, maxLen || 60);
+  }
+  function num(v, fallback) { const n = Number(v); return Number.isFinite(n) ? n : (fallback === undefined ? 0 : fallback); }
+  function clamp(n, lo, hi) { return Math.min(hi, Math.max(lo, n)); }
 
-  // Alert System
-  let alertCb = null;
-  function showCustomAlert(title, msg, btnLabel = "Okay, Got It", cb = null) {
-    document.getElementById('alert-title').innerText = title;
-    document.getElementById('custom-alert-msg').innerText = msg;
-    document.getElementById('alert-btn').innerText = btnLabel;
-    alertCb = cb;
+  function calcAge(birthday) {
+    if (!birthday) return '—';
+    const bd = new Date(birthday + 'T00:00:00');
+    if (isNaN(bd.getTime())) return '—';
+    const diff = Date.now() - bd.getTime();
+    const yrs = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+    const mos = Math.floor((diff % (1000 * 60 * 60 * 24 * 365.25)) / (1000 * 60 * 60 * 24 * 30.44));
+    if (yrs > 0) return `${yrs}y ${mos}m`;
+    return `${mos}m`;
+  }
+
+  // =====================================================================
+  //  MODALS
+  // =====================================================================
+  let alertOnOk = null, alertOnCancel = null;
+  function showAlert(opts) {
+    document.getElementById('alert-title').textContent = opts.title || '';
+    document.getElementById('custom-alert-msg').textContent = opts.msg || '';
+    document.getElementById('alert-btn').textContent = opts.okLabel || 'Okay, Got It';
+    const cancelBtn = document.getElementById('alert-cancel');
+    if (opts.cancelLabel) { cancelBtn.textContent = opts.cancelLabel; cancelBtn.classList.remove('hidden'); }
+    else { cancelBtn.classList.add('hidden'); }
+    alertOnOk = opts.onOk || null; alertOnCancel = opts.onCancel || null;
     document.getElementById('custom-alert').classList.remove('hidden');
   }
+  function showCustomAlert(title, msg, okLabel, cb) { showAlert({ title, msg, okLabel, onOk: cb }); }
+
   document.getElementById('alert-btn').addEventListener('click', () => {
     document.getElementById('custom-alert').classList.add('hidden');
-    if (alertCb) { alertCb(); alertCb = null; }
+    const cb = alertOnOk; alertOnOk = null; alertOnCancel = null; if (cb) cb();
+  });
+  document.getElementById('alert-cancel').addEventListener('click', () => {
+    document.getElementById('custom-alert').classList.add('hidden');
+    const cb = alertOnCancel; alertOnOk = null; alertOnCancel = null; if (cb) cb();
   });
 
+  window.showTokenInfo = function() {
+    showCustomAlert("🪙 MyBuddy Buddycoins", `Engage with the MyBuddy Map to earn Buddycoins:\n\n🤝 Refer a friend (+50)\n🐾 Host a park outing (+20)\n🚨 Help find a lost pet (+100)\n🏥 Review a clinic/cafe/groomer (+10)\n📅 Book an appointment via MyBuddy (+10)\n\nRedeem Buddycoins for:\n🎁 Pet treats & toys\n⭐️ Premium features\n🎟️ Event discounts\n\nReach ${TOKEN_THRESHOLD} Buddycoins or invite 3 friends to upgrade your pet to Silver for FREE!`, "Let's Go!");
+  };
+
   window.showSecretaryInfo = function() {
-    showCustomAlert(
-      "What is the Pet Secretary? 📋", 
-      "It is your pet's personal assistant! Upgrading to Silver unlocks:\n\n" +
-      "🧮 Health Calculators\nCalculates human age, exact daily food portions, water needs, and tells you how often to weigh them.\n\n" +
-      "✈️ Travel Checklists\nInteractive lists for microchips, health certificates, and import/export permits so you never miss a flight.\n\n" +
-      "⏰ Smart Reminders (Coming Soon)\nAutomated email/SMS alerts for upcoming vet appointments, vaccinations, and medications.\n\n" +
-      "💊 Daily Trackers (Coming Soon)\nPoo timer, supplement schedules, and medication doses.\n\n" +
-      "🏥 1-Click Booking\nDirect links to your saved preferred Vets and Groomers.\n\n" +
-      "How to unlock for FREE:\nLog in for 5 consecutive days OR invite 3 friends!",
-      "Got It!"
-    );
-  }
+    showCustomAlert("What is the Pet Secretary? 📋", `It is your pet's personal assistant! Upgrading to Silver unlocks:\n\n🧮 Health Calculators\n✈️ Travel Checklists\n⏰ Smart Reminders\n💊 Daily Trackers\n\nHow to unlock for FREE:\nEarn ${TOKEN_THRESHOLD} tokens by engaging on the map OR invite 3 friends!`, "Got It!");
+  };
 
-  // --- SEALS ---
+  // =====================================================================
+  //  TIER SYSTEM & SEAL
+  // =====================================================================
+  function tierKey(t) {
+    const k = String(t || '').toLowerCase();
+    if (k === 'silver') return 'silver';
+    if (k === 'gold' || k === 'platinum') return 'gold';
+    return 'red';
+  }
+  function tierLabel(t) {
+    const k = tierKey(t);
+    return k === 'gold' ? 'GOLD' : (k === 'silver' ? 'SILVER' : 'RED');
+  }
   function sealHTML(tier) {
-    const currentTier = tier || 'Standard';
-    const imagePath = {
-      Standard: 'seal-standard.png',
-      Silver:   'seal-silver.png',
-      Gold:     'seal-gold.png'
-    }[currentTier] || 'seal-standard.png';
-
-    return `<img src="${imagePath}" class="stamp-seal-img" alt="${esc(currentTier)} Seal">`;
+    const key = tierKey(tier);
+    const files = { red: 'seal-red.png', silver: 'seal-silver.png', gold: 'seal-gold.png' };
+    const src = files[key] || files.red;
+    return `<img src="${src}" class="stamp-seal-img" alt="${esc(tierLabel(tier))} Seal" onerror="this.style.display='none'">`;
   }
 
-  // --- AUTHENTICATION ---
+  // =====================================================================
+  //  MRZ
+  // =====================================================================
+  const MRZ_LINE_LEN = 44;
+  function mrzChars(v, len) { return String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, '<').padEnd(len, '<').slice(0, len); }
+  function mrzCheckDigit(str) {
+    const weights = [7, 3, 1]; let sum = 0;
+    for (let i = 0; i < str.length; i++) {
+      const c = str.charAt(i); let v;
+      if (c === '<') v = 0; else if (c >= '0' && c <= '9') v = c.charCodeAt(0) - 48; else v = c.charCodeAt(0) - 55;
+      sum += v * weights[i % 3];
+    }
+    return String(sum % 10);
+  }
+  function two(n) { return String(n).padStart(2, '0'); }
+  function yymmdd(d) { return String(d.getFullYear()).slice(-2) + two(d.getMonth() + 1) + two(d.getDate()); }
+
+  function buildMRZ(pet) {
+    let rawName = String(pet.name || 'UNNAMED').toUpperCase();
+    try { rawName = rawName.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
+    rawName = rawName.replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim() || 'UNNAMED';
+    const words = rawName.split(' ');
+    const nameField = words.length > 1 ? words[words.length - 1] + '<<' + words.slice(0, -1).join('<') : words[0];
+    const line1 = ('P<SGP<' + nameField).replace(/[^A-Z0-9<]/g, '<').padEnd(MRZ_LINE_LEN, '<').slice(0, MRZ_LINE_LEN);
+
+    const docNo = mrzChars(String(pet.serial_number || 'MB000000').replace(/[^A-Z0-9]/g, ''), 9);
+    const docCheck = mrzCheckDigit(docNo);
+    const nat = 'SGP';
+    let dob = '<<<<<<';
+    if (pet.birthday && /^\d{4}-\d{2}-\d{2}$/.test(pet.birthday)) {
+      const d = new Date(pet.birthday + 'T00:00:00');
+      if (!isNaN(d.getTime())) dob = yymmdd(d);
+    }
+    const dobCheck = mrzCheckDigit(dob);
+    const sex = pet.sex === 'F' ? 'F' : 'M';
+    const issue = pet.created_at ? new Date(pet.created_at) : new Date();
+    const base = isNaN(issue.getTime()) ? new Date() : issue;
+    const expDate = new Date(base.getTime()); expDate.setFullYear(expDate.getFullYear() + 10);
+    const exp = yymmdd(expDate); const expCheck = mrzCheckDigit(exp);
+    const personal = '<'.repeat(14); const personalCheck = mrzCheckDigit(personal);
+    const composite = mrzCheckDigit(docNo + docCheck + dob + dobCheck + exp + expCheck + personal + personalCheck);
+    
+    const line2 = (docNo + docCheck + nat + dob + dobCheck + sex + exp + expCheck + personal + personalCheck + composite).padEnd(MRZ_LINE_LEN, '<').slice(0, MRZ_LINE_LEN);
+    return { line1, line2 };
+  }
+
+  // =====================================================================
+  //  TRAVEL CHECKLIST
+  // =====================================================================
+  const TRAVEL_DATA = [
+    { category: "1. Primary Identification & Health", items: [
+      { id: "microchip_cert", label: "ISO 11784/11785 Microchip Certificate" },
+      { id: "vhc", label: "Veterinary Health Certificate" },
+      { id: "gov_endorse", label: "Government/Official Endorsement" },
+      { id: "core_vax", label: "Core Vaccination Record" }
+    ]},
+    { category: "2. Specialized Rabies & Parasites", items: [
+      { id: "rabies_titre", label: "Rabies Titre Test (FAVN/RNATT)" },
+      { id: "parasite_cert", label: "Parasite Treatment Certificate" }
+    ]},
+    { category: "3. Permits & Legal Authorizations", items: [
+      { id: "import_permit", label: "Destination Country Import Permit" },
+      { id: "export_license", label: "Export License / Certificate" },
+      { id: "re_entry", label: "Re-entry / Import Permit" },
+      { id: "cites", label: "CITES Permit" }
+    ]},
+    { category: "4. Transport & Travel Logistics", items: [
+      { id: "airline_booking", label: "Airline / Cargo Booking" },
+      { id: "iata_declaration", label: "IATA Air Transport Declaration" }
+    ]}
+  ];
+  const TOTAL_TRAVEL_ITEMS = TRAVEL_DATA.reduce((n, c) => n + c.items.length, 0);
+
+  function generateTravelHTML(pet) {
+    const saved = (pet.travel_checklist && typeof pet.travel_checklist === 'object') ? pet.travel_checklist : {};
+    let checkedCount = 0;
+    TRAVEL_DATA.forEach(cat => cat.items.forEach(item => { if (saved[item.id]) checkedCount++; }));
+    let html = `<details class="travel-panel"><summary>✈️ Travel Requirements <span style="font-size:10px; background:#E2E8F0; padding:2px 6px; border-radius:4px;">${checkedCount}/${TOTAL_TRAVEL_ITEMS}</span></summary><div class="travel-content">`;
+    TRAVEL_DATA.forEach(cat => {
+      html += `<div class="travel-category">${esc(cat.category)}</div>`;
+      cat.items.forEach(item => {
+        const isChecked = saved[item.id] ? 'checked' : '';
+        html += `<label class="travel-item"><input type="checkbox" class="travel-checkbox" data-petid="${esc(pet.id)}" data-itemid="${esc(item.id)}" ${isChecked}><span>${esc(item.label)}</span></label>`;
+      });
+    });
+    return html + `</div></details>`;
+  }
+
+  async function saveTravelChecklist(petId) {
+    const card = document.getElementById('pet-card-' + petId); if (!card) return;
+    const checkboxes = card.querySelectorAll('.travel-checkbox');
+    const checklist = {}; let checked = 0;
+    checkboxes.forEach(cb => { checklist[cb.dataset.itemid] = cb.checked; if (cb.checked) checked++; });
+    const counter = card.querySelector('.travel-panel summary span');
+    if (counter) counter.textContent = `${checked}/${TOTAL_TRAVEL_ITEMS}`;
+    await db.from('pets').update({ travel_checklist: checklist }).eq('id', petId);
+  }
+
+  // =====================================================================
+  //  AUTHENTICATION & UPGRADES
+  // =====================================================================
+  function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+  function setAuthBusy(state) { document.getElementById('btn-signup').disabled = state; document.getElementById('btn-signin').disabled = state; }
+
   async function checkUser() {
-    const { data: { session } } = await db.auth.getSession();
-    if (session) {
-      currentUser = session.user;
-      showDashboard();
-      handleIncomingSave();
+    const { data } = await db.auth.getSession();
+    if (data && data.session && data.session.user) {
+      currentUser = data.session.user; await showDashboard(); await handleIncomingSave();
     }
   }
-
   async function signUp() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-
-    if (!document.getElementById('follow-fb').checked || !document.getElementById('follow-ig').checked) {
-      return showCustomAlert("Hold On! ✋", "Please tick both Facebook and Instagram to join the family.");
-    }
-    
-    const { data, error } = await db.auth.signUp({ email, password });
-    
-    if (error) {
-      showCustomAlert("Error", error.message);
-    } else {
-      const pendingReferral = new URLSearchParams(window.location.search).get('ref');
-      if (pendingReferral && data.user) {
-          await db.from('profiles').update({ referred_by: pendingReferral }).eq('id', data.user.id);
-          const { data: refProfile } = await db.from('profiles').select('referral_count').eq('id', pendingReferral).single();
-          const newCount = (refProfile?.referral_count || 0) + 1;
-          await db.from('profiles').update({ referral_count: newCount }).eq('id', pendingReferral);
-
-          if (newCount >= 3) {
-              const { data: pets } = await db.from('pets').select('id').eq('owner_id', pendingReferral).eq('tier', 'Standard');
-              if (pets && pets.length > 0) {
-                  for (let pet of pets) {
-                      await db.from('pets').update({ tier: 'Silver' }).eq('id', pet.id);
-                  }
-              }
-          }
-      }
-      showCustomAlert("Welcome! 🐾", "Sign up successful! Please check your email to verify.");
-    }
+    if (busy) return;
+    const email = document.getElementById('email').value.trim(), password = document.getElementById('password').value;
+    if (!validEmail(email)) return showCustomAlert("Check your email", "Please enter a valid email address.");
+    if (password.length < 6) return showCustomAlert("Password too short", "Your password needs at least 6 characters.");
+    if (!document.getElementById('follow-fb').checked || !document.getElementById('follow-ig').checked) return showCustomAlert("Hold On! ✋", "Please tick both Facebook and Instagram to join the family.");
+    busy = true; setAuthBusy(true);
+    const { error } = await db.auth.signUp({ email, password });
+    busy = false; setAuthBusy(false);
+    if (error) return showCustomAlert("Sign Up Error", error.message);
+    const pendingReferral = new URLSearchParams(window.location.search).get('ref');
+    if (pendingReferral) localStorage.setItem('mybuddy_pending_ref', pendingReferral);
+    showCustomAlert("Welcome! 🐾", "Sign up successful! Please check your email to verify your account, then log in.");
   }
-
   async function signIn() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+    if (busy) return;
+    const email = document.getElementById('email').value.trim(), password = document.getElementById('password').value;
+    if (!validEmail(email)) return showCustomAlert("Check your email", "Please enter a valid email address.");
+    if (!password) return showCustomAlert("Password required", "Please enter your password.");
+    busy = true; setAuthBusy(true);
     const { data, error } = await db.auth.signInWithPassword({ email, password });
-    if (error) showCustomAlert("Log In Error", error.message);
-    else {
-      currentUser = data.user;
-      showDashboard();
-      handleIncomingSave();
-    }
+    busy = false; setAuthBusy(false);
+    if (error) return showCustomAlert("Log In Error", error.message);
+    currentUser = data.user; await showDashboard(); await handleIncomingSave();
   }
-
-  async function signOut() {
-    await db.auth.signOut();
-    location.reload();
-  }
+  async function signOut() { await db.auth.signOut(); location.reload(); }
 
   async function showDashboard() {
     document.getElementById('auth-view').classList.add('hidden');
     document.getElementById('dashboard-view').classList.remove('hidden');
-    document.getElementById('user-email').textContent = currentUser.email;
+    document.getElementById('user-email').textContent = currentUser.email || '';
     
-    const { data: profile } = await db.from('profiles').select('*').eq('id', currentUser.id).single();
-    window.userProfile = profile || { login_streak: 1, referral_count: 0 }; 
+    let { data: profile } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+    if (!profile) {
+      const { data: created } = await db.from('profiles').upsert({ id: currentUser.id, email: currentUser.email, tokens: 0, lifetime_tokens: 0 }, { onConflict: 'id' }).select().maybeSingle();
+      profile = created;
+    }
+    window.userProfile = profile || { tokens: 0, lifetime_tokens: 0, referral_count: 0, tier: 'Red' };
     
-    await trackLoginAndUpgrade();
+    const tokenEl = document.getElementById('token-balance');
+    if (tokenEl) tokenEl.textContent = num(window.userProfile.tokens, 0);
+    updateUpgradeReminder(num(window.userProfile.tokens, 0));
+
+    await claimPendingReferral(); 
+    await loadPets(); 
+    await loadMyReports(); 
+    await loadConnectionRequests(); 
+    await loadBuddyAlerts();
+    
+    const whatsappPanel = document.getElementById('whatsapp-panel');
+    if (whatsappPanel) {
+        if (!window.userProfile.phone_number) {
+            whatsappPanel.style.display = 'block';
+        } else {
+            whatsappPanel.style.display = 'none';
+        }
+    }
+  }
+
+  async function claimPendingReferral() {
+    const pending = localStorage.getItem('mybuddy_pending_ref'); if (!pending) return;
+    if (window.userProfile && window.userProfile.referred_by) { localStorage.removeItem('mybuddy_pending_ref'); return; }
+    const { data, error } = await db.rpc('claim_referral', { ref_code: pending });
+    if (!error && data && data.ok) {
+      localStorage.removeItem('mybuddy_pending_ref');
+      const { data: fresh } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+      if (fresh) { window.userProfile = fresh; document.getElementById('token-balance').textContent = num(fresh.tokens, 0); }
+    } else if (!error && data && !data.ok) { localStorage.removeItem('mybuddy_pending_ref'); }
+  }
+
+  // =====================================================================
+  //  LOST & FOUND
+  // =====================================================================
+  let lostLat = null, lostLng = null;
+  window.getGeoLocation = function() {
+    const btn = document.getElementById('lost-geo-btn');
+    if (!navigator.geolocation) return showCustomAlert('Not Supported', 'Geolocation is not supported by your browser.');
+    btn.textContent = '📍 Getting location...';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { lostLat = pos.coords.latitude; lostLng = pos.coords.longitude; btn.textContent = '✅ Location Tagged'; btn.style.background = '#F0FDF4'; btn.style.color = '#15803D'; btn.style.borderColor = '#86EFAC'; },
+      (err) => {
+        lostLat = 1.3521; lostLng = 103.8198;
+        btn.textContent = '✅ Default Location Tagged'; btn.style.background = '#F0FDF4'; btn.style.color = '#15803D'; btn.style.borderColor = '#86EFAC';
+      }
+    );
+  };
+  function openLostModal(petId) {
+    const pet = petsCache.find(p => String(p.id) === String(petId)); if (!pet) return;
+    document.getElementById('lost-modal-title').textContent = '🚨 I Lost ' + (cleanText(pet.name, 24) || 'MyBuddy');
+    document.getElementById('lost-location').value = ''; document.getElementById('lost-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('lost-phone').value = ''; document.getElementById('lost-notes').value = ''; document.getElementById('lost-reward').value = '';
+    lostLat = null; lostLng = null;
+    const geoBtn = document.getElementById('lost-geo-btn'); geoBtn.textContent = '📍 Tag Current GPS Location'; geoBtn.style.background = ''; geoBtn.style.color = ''; geoBtn.style.borderColor = '';
+    document.getElementById('lost-submit').onclick = () => submitLostReport(petId);
+    document.getElementById('lost-cancel').onclick = () => document.getElementById('lost-modal').classList.add('hidden');
+    document.getElementById('lost-modal').classList.remove('hidden'); setTimeout(() => document.getElementById('lost-location').focus(), 50);
+  }
+  async function submitLostReport(petId) {
+    const location = cleanText(document.getElementById('lost-location').value, 80), date = document.getElementById('lost-date').value;
+    const phone = cleanText(document.getElementById('lost-phone').value, 20), notes = cleanText(document.getElementById('lost-notes').value, 200), reward = cleanText(document.getElementById('lost-reward').value, 20);
+    if (!location) return showCustomAlert('Location required', 'Where was your pet last seen?');
+    if (!date) return showCustomAlert('Date required', 'When was your pet last seen?');
+    if (!phone) return showCustomAlert('Phone required', 'Please add a phone number.');
+    const btn = document.getElementById('lost-submit'); btn.disabled = true; btn.textContent = 'Saving…';
+    const { error } = await db.from('pets').update({ is_lost: true, lost_last_seen: location, lost_date: date, lost_contact_phone: phone, lost_notes: notes || null, lost_reward: reward || null, lost_lat: lostLat, lost_lng: lostLng, found_date: null }).eq('id', petId);
+    btn.disabled = false; btn.textContent = '🚨 I Lost MyBuddy';
+    if (error) return showCustomAlert('Error', error.message);
+
+    try {
+        const { data: pet } = await db.from('pets').select('name').eq('id', petId).single();
+        const petName = pet ? pet.name : 'A pet';
+        const { data: pastConnections } = await db.from('connect_requests').select('sender_id, receiver_id').or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`).in('status', ['accepted', 'completed']);
+        if (pastConnections && pastConnections.length > 0) {
+            const buddyIds = pastConnections.map(conn => conn.sender_id === currentUser.id ? conn.receiver_id : conn.sender_id);
+            const uniqueBuddyIds = [...new Set(buddyIds)];
+            const notifications = uniqueBuddyIds.map(buddyId => ({
+                user_id: buddyId,
+                message: `🚨 URGENT: ${petName} is lost! Last seen at ${location}. Open the Map to help search!`
+            }));
+            await db.from('notifications').insert(notifications);
+        }
+    } catch (err) { console.error("Failed to send lost alerts:", err); }
+
+    document.getElementById('lost-modal').classList.add('hidden'); 
+    showCustomAlert('Pet marked as lost 🚨', 'Your passport now shows a LOST banner. Your buddies have been alerted!'); 
     await loadPets();
   }
-
-  // --- STREAK & REFERRAL LOGIC ---
-  async function trackLoginAndUpgrade() {
-    if (!currentUser || !window.userProfile) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    let streak = window.userProfile.login_streak || 0;
-    let lastLogin = window.userProfile.last_login_date;
-
-    if (lastLogin === today) return; 
-
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-    if (lastLogin === yesterdayStr) {
-        streak += 1; 
-    } else {
-        streak = 1; 
-    }
-
-    await db.from('profiles').update({ login_streak: streak, last_login_date: today }).eq('id', currentUser.id);
-    window.userProfile.login_streak = streak;
-
-    if (streak >= 5) {
-        await unlockSilverForAllPets("5-Day Streak Complete! 🔥");
-    }
-  }
-
-  async function unlockSilverForAllPets(reason) {
-    const { data: pets } = await db.from('pets').select('id').eq('owner_id', currentUser.id).eq('tier', 'Standard');
-    if (pets && pets.length > 0) {
-        for (let pet of pets) {
-            await db.from('pets').update({ tier: 'Silver' }).eq('id', pet.id);
-        }
-        showCustomAlert(reason, "You've unlocked the Pet Secretary for all your pets!");
-        loadPets(); 
-    }
-  }
-
-  window.copyReferralLink = function() {
-    const link = window.location.origin + window.location.pathname + '?ref=' + currentUser.id;
-    navigator.clipboard.writeText(link).then(() => {
-        showCustomAlert("Link Copied!", "Send this link to 3 friends. When they sign up, you instantly unlock the Pet Secretary!");
+  function markFound(petId) {
+    const pet = petsCache.find(p => String(p.id) === String(petId));
+    showAlert({ title: 'Mark as found? 🎉', msg: 'This removes the LOST banner from ' + (pet ? (cleanText(pet.name, 24) || 'the pet') + "'s" : 'the') + ' passport.', okLabel: 'Yes, found!', cancelLabel: 'Cancel',
+      onOk: async () => {
+        const { error } = await db.from('pets').update({ is_lost: false, found_date: new Date().toISOString() }).eq('id', petId);
+        if (error) return showCustomAlert('Error', error.message);
+        showCustomAlert('Welcome home! 🏠', 'The LOST banner has been removed.'); await loadPets();
+      }
     });
   }
+  function shareLostPost(petId) {
+    const pet = petsCache.find(p => String(p.id) === String(petId)); if (!pet || !pet.is_lost) return;
+    const url = 'https://lyyj2000.github.io/mybuddy-vet-finder/verify.html?serial=' + encodeURIComponent(pet.serial_number);
+    const msg = '🚨 LOST PET: ' + (cleanText(pet.name, 24) || 'Pet') + ' (' + (cleanText(pet.species, 20) || 'Pet') + ')\nLast seen: ' + (pet.lost_last_seen || '') + ' on ' + (pet.lost_date || '') + '\nContact: ' + (pet.lost_contact_phone || '') + '\n' + (pet.lost_reward ? 'Reward: ' + pet.lost_reward + '\n' : '') + (pet.lost_notes ? 'Notes: ' + pet.lost_notes + '\n' : '') + 'Passport: ' + url;
+    if (navigator.share) { navigator.share({ title: 'LOST PET: ' + (cleanText(pet.name, 24) || 'Pet'), text: msg }).catch(() => {}); }
+    else if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(msg).then(() => showCustomAlert('Copied! 📋', 'Paste into WhatsApp to alert your community.')).catch(() => showCustomAlert('Share message', msg)); }
+    else { showCustomAlert('Share message', msg); }
+  }
 
-  // --- TRAVEL CHECKLIST LOGIC ---
-  const TRAVEL_DATA = [
-    {
-      category: "1. Primary Identification & Health",
-      items: [
-        { id: "microchip_cert", label: "ISO 11784/11785 Microchip Certificate (15-digit)" },
-        { id: "vhc", label: "Veterinary Health Certificate (issued within 7–14 days)" },
-        { id: "gov_endorse", label: "Government/Official Endorsement (e.g., AVS, USDA, DEFRA)" },
-        { id: "core_vax", label: "Core Vaccination Record (DHPP for dogs, FVRCP for cats)" }
-      ]
-    },
-    {
-      category: "2. Specialized Rabies & Parasites",
-      items: [
-        { id: "rabies_titre", label: "Rabies Neutralising Antibody Titre Test (FAVN/RNATT)" },
-        { id: "parasite_cert", label: "Parasite Treatment Certificate (Deworming & Fleas)" }
-      ]
-    },
-    {
-      category: "3. Permits & Legal Authorizations",
-      items: [
-        { id: "import_permit", label: "Destination Country Import Permit" },
-        { id: "export_license", label: "Export License / Certificate" },
-        { id: "re_entry", label: "Re-entry / Import Permit (For returning home)" },
-        { id: "cites", label: "CITES Permit (If exotic/protected species)" }
-      ]
-    },
-    {
-      category: "4. Transport & Travel Logistics",
-      items: [
-        { id: "airline_booking", label: "Airline / Cargo Booking Confirmation" },
-        { id: "iata_declaration", label: "IATA Air Transport Declaration (Crate requirements)" }
-      ]
+  // =====================================================================
+  //  RENDER PASSPORT CARDS
+  // =====================================================================
+  function drawQRCodes(cardEl, pet) {
+    if (!cardEl || !pet || !pet.serial_number) return;
+    const url = 'https://lyyj2000.github.io/mybuddy-vet-finder/verify.html?serial=' + encodeURIComponent(pet.serial_number);
+    const headerBox = cardEl.querySelector('.qr-position');
+    if (headerBox) { headerBox.innerHTML = ''; new QRCode(headerBox, { text: url, width: 50, height: 50, colorDark: '#111111', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H }); }
+    const lostBox = cardEl.querySelector('.lost-banner-qr');
+    if (lostBox) { lostBox.innerHTML = ''; new QRCode(lostBox, { text: url, width: 60, height: 60, colorDark: '#B71C1C', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H }); }
+  }
+  function drawBarcode(cardEl, pet) {
+    if (!pet || !pet.serial_number) return;
+    const barcodeBox = cardEl.querySelector('.barcode-box svg');
+    if (barcodeBox) {
+      try { JsBarcode(barcodeBox, pet.serial_number, { format: "CODE128", lineColor: "#111", width: 1.2, height: 25, displayValue: false, margin: 0 }); } 
+      catch (e) { console.warn("Barcode generation skipped", e); }
     }
-  ];
-
-  function generateTravelHTML(pet) {
-    const saved = pet.travel_checklist || {};
-    let totalItems = 0;
-    let checkedItems = 0;
-
-    let html = `<details class="travel-panel">
-      <summary>✈️ Travel Requirements <span style="font-size:10px; background:#E2E8F0; padding:2px 6px; border-radius:4px;" id="travel-count-${pet.id}">0/0</span></summary>
-      <div class="travel-content">`;
-
-    TRAVEL_DATA.forEach(cat => {
-      html += `<div class="travel-category">${cat.category}</div>`;
-      cat.items.forEach(item => {
-        totalItems++;
-        const isChecked = saved[item.id] ? 'checked' : '';
-        if (isChecked) checkedItems++;
-        
-        html += `
-          <label class="travel-item">
-            <input type="checkbox" class="travel-checkbox" data-petid="${esc(pet.id)}" data-itemid="${item.id}" ${isChecked}>
-            <span>${item.label}</span>
-          </label>
-        `;
-      });
-    });
-
-    html += `</div></details>`;
-    
-    setTimeout(() => {
-      const counter = document.getElementById(`travel-count-${pet.id}`);
-      if (counter) counter.innerText = `${checkedItems}/${totalItems}`;
-    }, 100);
-
-    return html;
   }
 
-  async function saveTravelChecklist(petId) {
-    const card = document.getElementById(`pet-card-${petId}`);
-    if (!card) return;
-    
-    const checkboxes = card.querySelectorAll('.travel-checkbox');
-    let checklist = {};
-    let checkedCount = 0;
-
-    checkboxes.forEach(cb => {
-      checklist[cb.dataset.itemid] = cb.checked;
-      if (cb.checked) checkedCount++;
-    });
-
-    const counter = document.getElementById(`travel-count-${petId}`);
-    if (counter) counter.innerText = `${checkedCount}/12`; 
-
-    await db.from('pets').update({ travel_checklist: checklist }).eq('id', petId);
-  }
-
-  // --- RENDER PASSPORTS ---
   function renderPetCard(pet) {
-    const tier = pet.tier || 'Standard';
-    const serial = pet.serial_number || 'MB-XXXXXX';
+    const tier = pet.tier || 'Standard', key = tierKey(tier);
+    const serial = cleanText(pet.serial_number, 20) || 'MB-000000';
+    const displayName = cleanText(pet.name, 24) || 'UNNAMED';
+    const species = cleanText(pet.species, 20) || 'DOG';
     const sex = pet.sex === 'F' ? 'F' : 'M';
-    const name = pet.name || 'UNNAMED';
-    const dob = pet.birthday || 'NOT SET';
-    const chip = pet.microchip || 'NOT PROVIDED';
-    
+    const dob = cleanText(pet.birthday, 20) || 'NOT SET';
+    const age = calcAge(pet.birthday);
+    const chip = cleanText(pet.microchip, 20) || 'NOT PROVIDED';
+    const ownerPhone = cleanText(pet.owner_phone, 20) || 'Not set';
+    const allergies = cleanText(pet.allergies, 30) || 'None';
+    const markings = cleanText(pet.markings, 30) || 'Not set';
     const issueDate = pet.created_at ? new Date(pet.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase() : new Date().toLocaleDateString('en-GB').toUpperCase();
+    const { line1, line2 } = buildMRZ(pet);
 
-    const nameMrz = name.toUpperCase().replace(/[^A-Z]/g, '<');
-    let dobMrz = '000000';
-    if (pet.birthday && /^\d{4}-\d{2}-\d{2}$/.test(pet.birthday)) {
-      dobMrz = pet.birthday.slice(2, 4) + pet.birthday.slice(5, 7) + pet.birthday.slice(8, 10);
-    }
-    const line1 = pad('P<SGP<' + nameMrz, 44);
-    const line2 = pad(pad(String(serial).replace(/-/g, '<'), 9) + 'SGP' + dobMrz + sex + '<<<<<<<<<<<<<<<<<<<<<<<<<', 44);
+    const lostBannerHTML = pet.is_lost ? `
+      <div class="lost-banner">
+        <div class="lost-banner-text">
+          <div class="lost-banner-title">🚨 LOST PET</div>
+          <div class="lost-banner-row"><strong>Last seen</strong> ${esc(cleanText(pet.lost_last_seen, 80) || 'Unknown')}</div>
+          <div class="lost-banner-row"><strong>Date</strong> ${esc(cleanText(pet.lost_date, 20) || 'Unknown')}</div>
+          ${pet.lost_reward ? `<div class="lost-banner-row" style="color:#FDE047"><strong>Reward</strong> ${esc(cleanText(pet.lost_reward, 20))}</div>` : ''}
+          <div class="lost-banner-row lost-banner-phone"><strong>Contact</strong> <a href="tel:${esc(cleanText(pet.lost_contact_phone, 20))}">${esc(cleanText(pet.lost_contact_phone, 20) || '')}</a></div>
+          ${pet.lost_notes ? `<div class="lost-banner-row" style="font-style:italic; opacity:.9;">${esc(cleanText(pet.lost_notes, 200))}</div>` : ''}
+        </div>
+        <div class="lost-banner-qr"></div>
+      </div>` : '';
 
-    const photoHTML = pet.photo_url 
-      ? `<img src="${esc(pet.photo_url)}" class="passport-photo">` 
-      : `<div class="passport-photo" style="background:#4CAF50;">${esc(name.charAt(0).toUpperCase())}</div>`;
+    const lostActionHTML = pet.is_lost
+      ? `<button class="upgrade-btn found-btn" data-action="mark-found" data-id="${esc(pet.id)}" style="width: 100%; margin-bottom: 8px;">✅ Mark as Found</button>
+         <div style="display: flex; gap: 8px; width: 100%; margin-bottom: 8px;">
+            <button class="upgrade-btn" data-action="share-lost" data-id="${esc(pet.id)}" style="flex: 1; background: #3B82F6; color: white; border: 2px solid #3B82F6; white-space: nowrap; font-size: 13px; padding: 10px 5px;">Share Lost Post</button>
+            <button class="upgrade-btn lost-btn" data-action="print-poster" data-id="${esc(pet.id)}" style="flex: 1; white-space: nowrap; font-size: 13px; padding: 10px 5px;">Print Lost Poster</button>
+         </div>`
+      : `<button class="upgrade-btn lost-btn"  data-action="report-lost" data-id="${esc(pet.id)}" style="width: 100%;">🚨 I Lost MyBuddy</button>`;
 
-    // Pet Secretary Calculators
-    let secretaryHTML = "";
-    if (tier === 'Silver' || tier === 'Gold') {
-        let weight = parseFloat(pet.weight) || 0;
-        let ageYrs = 0;
-        if (pet.birthday) ageYrs = (new Date() - new Date(pet.birthday)) / (1000 * 60 * 60 * 24 * 365.25);
-        
-        let humanAge = "—", foodGrams = "—", waterMl = "—";
-        
-        if (weight > 0) {
-            const mer = 70 * Math.pow(weight, 0.75) * 1.6; 
-            foodGrams = Math.round((mer / 350) * 100); 
-            waterMl = Math.round(weight * 60);
-        }
-        if (ageYrs > 0) humanAge = Math.round(ageYrs <= 2 ? ageYrs * 12 : 24 + (ageYrs - 2) * 5);
+    const photoHTML = pet.photo_url ? `<img src="${esc(pet.photo_url)}" class="passport-photo" alt="Pet photo">` : `<div class="passport-photo" style="background:#4CAF50;">${esc((displayName.charAt(0) || '?').toUpperCase())}</div>`;
 
-        secretaryHTML = `
-          <div class="secretary-panel">
-            <h4 class="secretary-title">📋 Pet Secretary <span style="font-size:9px; background:#E2E8F0; padding:2px 6px; border-radius:4px;">ACTIVE</span></h4>
-            <div class="secretary-grid">
-              <div class="secretary-box"><span>Human Age</span><strong>${humanAge} yrs</strong></div>
-              <div class="secretary-box"><span>Water Needed</span><strong>${waterMl > 0 ? waterMl + ' ml' : '—'}</strong></div>
-              <div class="secretary-box"><span>Daily Food</span><strong>${foodGrams > 0 ? foodGrams + ' g' : '—'}</strong></div>
-              <div class="secretary-box"><span>Weigh In</span><strong>${ageYrs < 1 ? 'Weekly' : 'Monthly'}</strong></div>
-            </div>
-            <div style="display:flex; gap:6px; margin-top:8px;">
-               <a href="index.html?category=Vet" target="_blank" style="flex:1; text-align:center; background:#3B82F6; color:#fff; text-decoration:none; padding:8px; font-size:11px; border-radius:6px; font-weight:bold;">🏥 Find Vets</a>
-               <a href="index.html?category=Groomer" target="_blank" style="flex:1; text-align:center; background:#F59E0B; color:#fff; text-decoration:none; padding:8px; font-size:11px; border-radius:6px; font-weight:bold;">✂️ Book Groomer</a>
-            </div>
+    let secretaryHTML = '';
+    if (key === 'silver' || key === 'gold') {
+      const weight = num(pet.weight, 0); let ageYrs = 0;
+      if (pet.birthday) { const bd = new Date(pet.birthday + 'T00:00:00'); if (!isNaN(bd.getTime())) ageYrs = (Date.now() - bd.getTime()) / (1000 * 60 * 60 * 24 * 365.25); }
+      let humanAge = '—', foodGrams = '—', waterMl = '—';
+      if (weight > 0) { const mer = 70 * Math.pow(weight, 0.75) * 1.6; foodGrams = Math.round((mer / 350) * 100); waterMl = Math.round(weight * 60); }
+      if (ageYrs > 0) humanAge = Math.round(ageYrs <= 2 ? ageYrs * 12 : 24 + (ageYrs - 2) * 5);
+      secretaryHTML = `
+        <div class="secretary-panel">
+          <h4 class="secretary-title">📋 Pet Secretary <span style="font-size:9px; background:#E2E8F0; padding:2px 6px; border-radius:4px;">ACTIVE</span></h4>
+          <div class="secretary-grid">
+            <div class="secretary-box"><span>Human Age</span><strong>${humanAge === '—' ? '—' : esc(humanAge) + ' yrs'}</strong></div>
+            <div class="secretary-box"><span>Water Needed</span><strong>${waterMl === '—' ? '—' : esc(waterMl) + ' ml'}</strong></div>
+            <div class="secretary-box"><span>Daily Food</span><strong>${foodGrams === '—' ? '—' : esc(foodGrams) + ' g'}</strong></div>
+            <div class="secretary-box"><span>Weigh In</span><strong>${ageYrs < 1 ? 'Weekly' : 'Monthly'}</strong></div>
           </div>
-        `;
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <a href="index.html?category=Vet" target="_blank" rel="noopener" style="flex:1; text-align:center; background:#3B82F6; color:#fff; text-decoration:none; padding:8px; font-size:11px; border-radius:6px; font-weight:bold;">🏥 Find Vets</a>
+            <a href="index.html?category=Groomer" target="_blank" rel="noopener" style="flex:1; text-align:center; background:#F59E0B; color:#fff; text-decoration:none; padding:8px; font-size:11px; border-radius:6px; font-weight:bold;">✂️ Book Groomer</a>
+          </div>
+        </div>`;
     }
 
-    // UPGRADE TRACKER LOGIC
-    let upgradeBtnHTML = "";
-    if (tier === 'Standard') {
-        const currentStreak = window.userProfile?.login_streak || 1;
-        const currentReferrals = window.userProfile?.referral_count || 0;
-        
+    let upgradeBtnHTML = '';
+    if (key === 'red') {
+      const tokens = clamp(num(window.userProfile && window.userProfile.tokens, 0), 0, TOKEN_THRESHOLD);
+      const referrals = clamp(num(window.userProfile && window.userProfile.referral_count, 0), 0, 3);
         upgradeBtnHTML = `
-          <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:8px; font-family:Arial, sans-serif;">
-            
-            <div style="text-align:center; font-weight:800; color:#388E3C; font-size:14px; margin-bottom:4px;">
-              🔓 Unlock the Pet Secretary
-            </div>
-            
-            <div style="text-align:center; font-size:11px; color:#64748B; margin-bottom:12px; line-height:1.4;">
-              Get health calculators, travel checklists, and automated reminders for your pet!
-            </div>
-            
-            <div style="text-align:center; margin-bottom:12px;">
-               <a href="javascript:void(0)" onclick="window.showSecretaryInfo()" style="font-size:11px; font-weight:800; color:#3B82F6; text-decoration:underline;">Learn More / View Benefits</a>
-            </div>
+        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:12px; margin-bottom:8px; font-family:Arial, sans-serif;">
+          <div style="text-align:center; font-weight:800; color:#388E3C; font-size:14px; margin-bottom:4px;">🔓 Unlock the Pet Secretary</div>
+          <div style="text-align:center; font-size:11px; color:#64748B; margin-bottom:12px; line-height:1.4;">Get health calculators, travel checklists, and automated reminders!</div>
+          <div style="text-align:center; margin-bottom:12px;"><a href="javascript:void(0)" onclick="window.showSecretaryInfo()" style="font-size:11px; font-weight:800; color:#3B82F6; text-decoration:underline;">Learn More / View Benefits</a></div>
+          
+          <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;"><span>🪙 Earn ${TOKEN_THRESHOLD} Tokens</span> <span>${tokens} of ${TOKEN_THRESHOLD}</span></div>
+          <div style="width:100%; background:#E2E8F0; border-radius:99px; height:8px; margin-bottom:12px;"><div style="width:${(tokens / TOKEN_THRESHOLD) * 100}%; background:#F59E0B; height:8px; border-radius:99px;"></div></div>
+          
+          <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;"><span>👥 Invite 3 Friends</span> <span>${referrals} of 3</span></div>
+          <div style="width:100%; background:#E2E8F0; border-radius:99px; height:8px; margin-bottom:12px;"><div style="width:${(referrals / 3) * 100}%; background:#3B82F6; height:8px; border-radius:99px;"></div></div>
 
-            <!-- Path 1: Streak -->
-            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
-              <span>🔥 5-Day Login Streak</span> <span>Day ${currentStreak} of 5</span>
-            </div>
-            <div style="width:100%; background:#E2E8F0; border-radius:99px; height:8px; margin-bottom:12px;">
-              <div style="width:${(currentStreak/5)*100}%; background:#F59E0B; height:8px; border-radius:99px;"></div>
-            </div>
+          <div style="text-align:center; margin: 10px 0; font-size: 11px; color: #64748B; font-weight: 700;">— OR —</div>
+          
+          <button onclick="buyPass('pet_secretary', 50)" style="width:100%; padding:8px; background:#388E3C; color:#fff; border:none; border-radius:6px; font-weight:800; font-family:'Baloo 2', cursive; cursor:pointer; margin-bottom:8px; font-size: 13px;">
+            Instant Access to Pet Secretary (50 🪙 for 3 Days)
+          </button>
 
-            <!-- Path 2: Referrals -->
-            <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
-              <span>👥 Invite 3 Friends</span> <span>${currentReferrals} of 3</span>
-            </div>
-            <div style="width:100%; background:#E2E8F0; border-radius:99px; height:8px; margin-bottom:12px;">
-              <div style="width:${(currentReferrals/3)*100}%; background:#3B82F6; height:8px; border-radius:99px;"></div>
-            </div>
-            
-            <button onclick="copyReferralLink()" style="width:100%; padding:8px; background:#3B82F6; color:#fff; border:none; border-radius:6px; font-weight:800; font-family:'Baloo 2', cursive; cursor:pointer;">
-              🎁 Invite Friends to Unlock Now
-            </button>
+          <div style="display:flex; gap:6px; margin-top:10px;">
+            <a href="index.html" style="flex:1; text-align:center; background:#388E3C; color:#fff; text-decoration:none; padding:8px; border-radius:6px; font-weight:800; font-size:12px; box-sizing:border-box; white-space: nowrap; display: flex; align-items: center; justify-content: center;">Go to Map</a>
+            <button onclick="showInviteModal()" style="flex:1; padding:8px; background:#3B82F6; color:#fff; border:none; border-radius:6px; font-weight:800; font-family:'Baloo 2', cursive; cursor:pointer; font-size:12px; white-space: nowrap;">Invite Friends</button>
           </div>
-        `;
+        </div>`;
     }
 
     return `
       <div class="pet-card" id="pet-card-${esc(pet.id)}">
         <div class="skyline-bg"></div>
         ${sealHTML(tier)}
-
+        ${lostBannerHTML}
         <div class="passport-inner">
           <div class="passport-header">
-            <div class="header-text">
-              <h2>PET PASSPORT</h2>
-              <h3>MYBUDDY.SG</h3>
-            </div>
-            <div class="qr-position" id="qr-${esc(pet.id)}"></div>
+            <div class="header-text"><h2>PET PASSPORT</h2><h3>MYBUDDY.SG</h3></div>
+            <div class="qr-position"></div>
           </div>
-
           <div class="passport-body">
             ${photoHTML}
             <div class="passport-data">
               <div class="data-group"><span class="data-label">Type</span><span class="data-value">P</span></div>
               <div class="data-group"><span class="data-label">Issuer</span><span class="data-value">MBY</span></div>
               <div class="data-group"><span class="data-label">Passport No.</span><span class="data-value">${esc(serial)}</span></div>
-              <div class="data-group"><span class="data-label">Tier</span><span class="data-value">${esc(tier)}</span></div>
-              <div class="data-group full"><span class="data-label">Name</span><span class="data-value">${esc(name)}</span></div>
-              <div class="data-group"><span class="data-label">Species</span><span class="data-value">${esc(pet.species || 'DOG')}</span></div>
-              <div class="data-group"><span class="data-label">Sex</span><span class="data-value">${esc(sex)}</span></div>
-              <div class="data-group"><span class="data-label">DOB</span><span class="data-value">${esc(dob)}</span></div>
+              <div class="data-group"><span class="data-label">Tier</span><span class="data-value">${esc(tierLabel(tier))}</span></div>
+              <div class="data-group full"><span class="data-label">Name</span><span class="data-value">${esc(displayName)}</span></div>
+              <div class="data-group"><span class="data-label">Species / Sex</span><span class="data-value">${esc(species)} / ${esc(sex)}</span></div>
               <div class="data-group"><span class="data-label">Microchip</span><span class="data-value">${esc(chip)}</span></div>
-              
-              <div class="data-group full"><span class="data-label">Preferred Vet</span><span class="data-value" style="font-size:10px; color:#3B82F6;">${esc(pet.preferred_vet || 'Not set')}</span></div>
-              <div class="data-group full"><span class="data-label">Preferred Groomer</span><span class="data-value" style="font-size:10px; color:#F59E0B;">${esc(pet.preferred_groomer || 'Not set')}</span></div>
+              <div class="data-group"><span class="data-label">DOB</span><span class="data-value">${esc(dob)}</span></div>
+              <div class="data-group"><span class="data-label">Age</span><span class="data-value">${esc(age)}</span></div>
             </div>
           </div>
 
-          <div class="passport-mrz">
-            <div>${esc(line1)}</div>
-            <div>${esc(line2)}</div>
+          <div class="medical-panel">
+            <div class="data-group"><span class="data-label">Owner Contact</span><span class="data-value">${esc(ownerPhone)}</span></div>
+            <div class="data-group"><span class="data-label">Allergies</span><span class="data-value">${esc(allergies)}</span></div>
+            <div class="data-group"><span class="data-label">Markings</span><span class="data-value">${esc(markings)}</span></div>
           </div>
 
+          <div class="signature-zone">
+            <div class="barcode-box"><svg class="barcode"></svg></div>
+            <div class="signature-box">Holder's Signature</div>
+          </div>
+
+          <div class="passport-mrz"><div>${esc(line1)}</div><div>${esc(line2)}</div></div>
           ${secretaryHTML}
           ${generateTravelHTML(pet)}
-
-          <div class="passport-disclaimer">Novelty Document - Not an Official Government ID</div>
+          
+          <!-- DOWNLOAD BUTTON MOVED UP HERE -->
+          <button class="upgrade-btn download-btn" data-action="print" data-id="${esc(pet.id)}" style="width: 100%; margin-top: 10px; margin-bottom: 10px;">📄 Download / Print PDF</button>
+          
+          <div class="passport-disclaimer">Novelty Document – Not an Official Government ID · Issued ${esc(issueDate)}</div>
         </div>
-
         <div class="action-buttons">
           ${upgradeBtnHTML}
-          <button class="upgrade-btn download-btn" data-action="print" data-id="${esc(pet.id)}">📄 Download / Print PDF</button>
-          <button class="upgrade-btn delete-btn" data-action="delete" data-id="${esc(pet.id)}">🗑️ Delete Passport</button>
+          ${lostActionHTML}
         </div>
       </div>`;
   }
 
+  // =====================================================================
+  //  LOAD PETS
+  // =====================================================================
   async function loadPets() {
     const list = document.getElementById('pets-list');
-    list.innerHTML = "<p style='text-align:center;color:#90A4AE;font-weight:600;'>Loading pets...</p>";
-
+    list.innerHTML = "<p style='text-align:center;color:#90A4AE;font-weight:600;'>Loading pets…</p>";
     const { data: pets, error } = await db.from('pets').select('*').eq('owner_id', currentUser.id).order('created_at', { ascending: true });
+    if (error) { list.innerHTML = "<p style='color:#F44336;'>Error loading pets.</p>"; return; }
+    petsCache = pets || [];
+    if (!petsCache.length) { list.innerHTML = "<p style='color:#90A4AE;font-weight:600;text-align:center;background:#fff;padding:10px;border-radius:8px;'>No pets yet. Add one below!</p>"; return; }
+    list.innerHTML = petsCache.map(renderPetCard).join('');
+    
+    petsCache.forEach(pet => {
+      const card = document.getElementById('pet-card-' + pet.id);
+      if (card) { drawQRCodes(card, pet); drawBarcode(card, pet); }
+    });
+  }
 
-    if (error) return list.innerHTML = "<p style='color:#F44336;'>Error loading pets.</p>";
-    if (!pets || pets.length === 0) return list.innerHTML = "<p style='color:#90A4AE; font-weight:600; text-align:center; background:#fff; padding:10px; border-radius:8px;'>No pets yet. Add one below!</p>";
+  // =====================================================================
+  //  EVENT DELEGATION
+  // =====================================================================
+  document.getElementById('pets-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]'); if (!btn) return;
+    const id = btn.dataset.id, action = btn.dataset.action;
+    if (action === 'print') printPassport(id);
+    else if (action === 'delete') deletePet(id);
+    else if (action === 'report-lost') openLostModal(id);
+    else if (action === 'mark-found') markFound(id);
+    else if (action === 'share-lost') shareLostPost(id);
+    else if (action === 'print-poster') openPosterModal(id);
+  });
+  document.getElementById('pets-list').addEventListener('change', e => {
+    if (e.target.classList.contains('travel-checkbox')) saveTravelChecklist(e.target.dataset.petid);
+  });
 
-    list.innerHTML = pets.map(renderPetCard).join("");
+  // =====================================================================
+  //  PRINT PASSPORT
+  // =====================================================================
+  function waitForImages(container) {
+    const imgs = Array.from(container.querySelectorAll('img'));
+    return Promise.all(imgs.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise(res => { img.onload = res; img.onerror = res; });
+    }));
+  }
 
-    pets.forEach(pet => {
-      const box = document.getElementById(`qr-${pet.id}`);
-      if (box && pet.serial_number) {
-        new QRCode(box, { text: `https://mybuddy.sg/verify/${encodeURIComponent(pet.serial_number)}`, width: 50, height: 50, colorDark: "#111111", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+  function printPassport(petId) {
+    const card = document.getElementById('pet-card-' + petId); if (!card) return;
+    const pet = petsCache.find(p => String(p.id) === String(petId));
+    showAlert({ title: '💡 Save as PDF', msg: "When the print window opens, change 'Destination' to 'Save as PDF'.", okLabel: 'Print / Save PDF', cancelLabel: 'Cancel',
+      onOk: async () => {
+        const root = document.getElementById('print-root');
+        root.innerHTML = '';
+        const clone = card.cloneNode(true);
+        clone.removeAttribute('id');
+        clone.querySelectorAll('[id]').forEach(el => { if (el.namespaceURI === 'http://www.w3.org/2000/svg') return; el.removeAttribute('id'); });
+        clone.querySelectorAll('.action-buttons').forEach(el => el.remove());
+        clone.querySelectorAll('.qr-position, .lost-banner-qr').forEach(box => { box.innerHTML = ''; });
+        clone.querySelectorAll('details').forEach(d => d.setAttribute('open', ''));
+        root.appendChild(clone);
+        if (pet) { drawQRCodes(clone, pet); drawBarcode(clone, pet); }
+        await waitForImages(root);
+        document.body.classList.add('print-passport');
+        setTimeout(() => {
+          window.print();
+          setTimeout(() => { document.body.classList.remove('print-passport'); root.innerHTML = ''; }, 700);
+        }, 150);
       }
     });
   }
 
-  // --- EVENT LISTENERS ---
-  document.getElementById('pets-list').addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const id = btn.dataset.id;
-    if (btn.dataset.action === 'print') printPassport(id);
-    else if (btn.dataset.action === 'delete') deletePet(id);
-  });
-
-  document.getElementById('pets-list').addEventListener('change', (e) => {
-    if (e.target.classList.contains('travel-checkbox')) {
-      const petId = e.target.dataset.petid;
-      saveTravelChecklist(petId);
-    }
-  });
-
-  // --- ACTIONS ---
-  function printPassport(petId) {
-    document.querySelectorAll('.pet-card').forEach(el => el.classList.remove('printing-now'));
-    const card = document.getElementById(`pet-card-${petId}`);
-    if (card) card.classList.add('printing-now');
-
-    showCustomAlert("💡 Save as PDF", "When the print window opens, change 'Destination' to 'Save as PDF'.", "Print / Save PDF", () => {
-      window.print();
-      setTimeout(() => { if (card) card.classList.remove('printing-now'); }, 1000);
-    });
+  // =====================================================================
+  //  PRINT LOST POSTER
+  // =====================================================================
+  function openPosterModal(petId) {
+    const pet = petsCache.find(p => String(p.id) === String(petId)); if (!pet || !pet.is_lost) return;
+    const root = document.getElementById('poster-root');
+    const photo = pet.photo_url || 'https://via.placeholder.com/400x400?text=NO+PHOTO';
+    const breed = cleanText(pet.species, 20).toUpperCase() || 'PET';
+    root.innerHTML = `
+      <div class="poster-container">
+        <div><h1 class="poster-header">LOST PET</h1><h2 class="poster-name">${esc(cleanText(pet.name, 24) || 'UNNAMED')} - ${esc(breed)}</h2></div>
+        <img src="${esc(photo)}" class="poster-photo" alt="Lost Pet">
+        <div class="poster-details">Last Seen: <span>${esc(cleanText(pet.lost_last_seen, 80) || 'Unknown')}</span><br>Date: <span>${esc(cleanText(pet.lost_date, 20) || 'Unknown')}</span></div>
+        ${pet.lost_reward ? `<div class="poster-reward">REWARD: ${esc(cleanText(pet.lost_reward, 20))}</div>` : ''}
+        <div class="poster-contact">CALL: ${esc(cleanText(pet.lost_contact_phone, 20) || '')}</div>
+        <div class="poster-qr-wrapper"><div class="poster-qr" id="poster-qr-${esc(pet.id)}"></div><div class="poster-qr-text">SCAN WITH<br>PHONE CAMERA<br>FOR DETAILS</div></div>
+      </div>`;
+    const qrBox = document.getElementById(`poster-qr-${pet.id}`);
+    if (qrBox) { const url = 'https://lyyj2000.github.io/mybuddy-vet-finder/verify.html?serial=' + encodeURIComponent(pet.serial_number); new QRCode(qrBox, { text: url, width: 100, height: 100, colorDark: '#111111', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H }); }
+    showAlert({ title: '🖨️ Print Poster', msg: "Full-color or black & white?", okLabel: 'Color Poster', cancelLabel: 'Black & White', onOk: () => doPrintPoster(root, false), onCancel: () => doPrintPoster(root, true) });
+  }
+  async function doPrintPoster(root, bw) {
+    root.classList.toggle('bw-mode', bw);
+    root.classList.remove('hidden');
+    await waitForImages(root); await new Promise(r => setTimeout(r, 100));
+    document.body.classList.add('print-poster');
+    window.print();
+    setTimeout(() => { document.body.classList.remove('print-poster'); root.classList.add('hidden'); root.innerHTML = ''; root.classList.remove('bw-mode'); }, 700);
   }
 
-  function resizeImage(file, maxSize = 400) {
+  // =====================================================================
+  //  CRUD
+  // =====================================================================
+  function resizeImage(file, maxSize) {
+    maxSize = maxSize || 400;
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
+      reader.onerror = () => reject(new Error('Could not read that file.'));
+      reader.onload = e => {
+        const img = new Image(); img.onerror = () => reject(new Error('Invalid image.'));
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width, height = img.height;
-          if (width > height) { if (width > maxSize) { height *= maxSize / width; width = maxSize; } }
-          else { if (height > maxSize) { width *= maxSize / height; height = maxSize; } }
-          canvas.width = width; canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.8));
+          let w = img.width, h = img.height;
+          if (w > h) { if (w > maxSize) { h *= maxSize / w; w = maxSize; } } else { if (h > maxSize) { w *= maxSize / h; h = maxSize; } }
+          const c = document.createElement('canvas'); c.width = Math.round(w); c.height = Math.round(h);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL('image/jpeg', 0.8));
         };
         img.src = e.target.result;
       };
@@ -837,87 +1003,313 @@
   }
 
   async function addPet() {
-    const name = document.getElementById('pet-name').value;
+    if (busy) return;
+    const btn = document.getElementById('btn-addpet');
+    const name = cleanText(document.getElementById('pet-name').value, 24);
     const species = document.getElementById('pet-species').value;
-    const sex = document.getElementById('pet-sex').value;
+    const sex = document.getElementById('pet-sex').value === 'F' ? 'F' : 'M';
     const birthday = document.getElementById('pet-birthday').value;
-    const weight = document.getElementById('pet-weight').value;
-    const microchip = document.getElementById('pet-microchip').value;
+    const weightRaw = document.getElementById('pet-weight').value;
+    const microchip = document.getElementById('pet-microchip').value.replace(/\D/g, '');
+    const ownerPhone = cleanText(document.getElementById('pet-owner-phone').value, 20);
+    const allergies = cleanText(document.getElementById('pet-allergies').value, 30);
+    const markings = cleanText(document.getElementById('pet-markings').value, 30);
     const fileInput = document.getElementById('pet-photo-input');
 
-    if (!name) return showCustomAlert("Hold on", "Please enter a pet name!");
+    if (!name) return showCustomAlert('Hold on', 'Please enter a pet name.');
+    if (microchip && microchip.length !== 15) return showCustomAlert('Check the microchip', 'Must be exactly 15 digits.');
 
-    let photoBase64 = null;
-    if (fileInput.files.length > 0) photoBase64 = await resizeImage(fileInput.files[0], 400);
+    const weight = weightRaw ? clamp(num(weightRaw, 0), 0, 200) : null;
+    busy = true; btn.disabled = true; btn.textContent = 'Creating passport…';
 
-    const serialNumber = 'MB-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    try {
+      let photoBase64 = null;
+      if (fileInput.files && fileInput.files.length) {
+        try { photoBase64 = await resizeImage(fileInput.files[0], 400); } catch (err) { return showCustomAlert('Photo error', err.message); }
+      }
 
-    const { error } = await db.from('pets').insert([{ 
-      owner_id: currentUser.id, 
-      name: name, 
-      species: species,
-      sex: sex,
-      birthday: birthday,
-      weight: weight ? parseFloat(weight) : null,
-      microchip: microchip,
-      photo_url: photoBase64,
-      serial_number: serialNumber,
-      tier: 'Standard', 
-      travel_checklist: {}
-    }]);
+      const serialNumber = 'MB-' + Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, 'X');
 
-    if (error) showCustomAlert("Error", error.message);
-    else {
-      ['pet-name', 'pet-birthday', 'pet-weight', 'pet-microchip', 'pet-photo-input'].forEach(id => document.getElementById(id).value = "");
-      showCustomAlert("Passport Issued! 🛂", "Your standard digital passport has been generated.");
-      loadPets(); 
+      const { error } = await db.from('pets').insert([{
+        owner_id: currentUser.id, name, species, sex, birthday: birthday || null, weight, microchip: microchip || null,
+        owner_phone: ownerPhone || null, allergies: allergies || null, markings: markings || null,
+        photo_url: photoBase64, serial_number: serialNumber, tier: 'Standard', travel_checklist: {}
+      }]);
+
+      if (error) return showCustomAlert('Error', error.message);
+
+      ['pet-name', 'pet-birthday', 'pet-weight', 'pet-microchip', 'pet-owner-phone', 'pet-allergies', 'pet-markings', 'pet-photo-input']
+        .forEach(id => { document.getElementById(id).value = ''; });
+
+      showCustomAlert('Passport Issued! 🛂', 'Your digital passport has been generated.');
+      await loadPets();
+    } finally {
+      busy = false; btn.disabled = false; btn.textContent = 'Add Pet';
     }
   }
 
-  async function deletePet(petId) {
-    if (!confirm("Delete this passport? This cannot be undone.")) return;
-    const { error } = await db.from('pets').delete().eq('id', petId);
-    if (error) showCustomAlert("Error", error.message);
-    else loadPets(); 
+  function deletePet(petId) {
+    const pet = petsCache.find(p => String(p.id) === String(petId));
+    showAlert({ title: 'Delete this passport?', msg: (pet ? (cleanText(pet.name, 24) || 'This pet') + "'s" : 'This') + ' passport will be permanently removed.', okLabel: 'Delete', cancelLabel: 'Cancel',
+      onOk: async () => { const { error } = await db.from('pets').delete().eq('id', petId); if (error) return showCustomAlert('Error', error.message); await loadPets(); }
+    });
   }
 
-  // --- MAP INTEGRATION INTERCEPTOR ---
+  function deleteFirstPet() {
+      if (!petsCache || petsCache.length === 0) {
+          return showCustomAlert('No Pets', 'You have no pets to delete.');
+      }
+      deletePet(petsCache[0].id);
+  }
+
+  // =====================================================================
+  //  MAP HANDOFF
+  // =====================================================================
   async function handleIncomingSave() {
     const params = new URLSearchParams(window.location.search);
-    const vetName = params.get('save_vet');
-    const groomerName = params.get('save_groomer');
-    
+    const vetName = params.get('save_vet'), groomerName = params.get('save_groomer');
     if (!vetName && !groomerName) return;
-
-    window.history.replaceState({}, document.title, window.location.pathname);
-    
-    if (!currentUser) return; 
-
-    const type = vetName ? 'preferred_vet' : 'preferred_groomer';
-    const name = vetName || groomerName;
-    
+    window.history.replaceState({}, document.title, window.location.pathname); if (!currentUser) return;
+    const type = vetName ? 'preferred_vet' : 'preferred_groomer'; const name = cleanText(vetName || groomerName, 80); if (!name) return;
     const { data: pets } = await db.from('pets').select('id, name').eq('owner_id', currentUser.id);
-    if (!pets || pets.length === 0) return showCustomAlert("No Pets Found", "Please add a pet first before saving locations.");
-
-    if (pets.length === 1) {
-        await db.from('pets').update({ [type]: name }).eq('id', pets[0].id);
-        showCustomAlert("Saved! 🛂", `Added ${name} to ${pets[0].name}'s profile.`);
-        loadPets();
-    } else {
-        const petNames = pets.map((p, i) => `${i+1}. ${p.name}`).join('\n');
-        const choice = prompt(`Which pet is this for?\n${petNames}\n\nEnter a number (1-${pets.length}):`);
-        const idx = parseInt(choice) - 1;
-        if (idx >= 0 && idx < pets.length) {
-            await db.from('pets').update({ [type]: name }).eq('id', pets[idx].id);
-            showCustomAlert("Saved! 🛂", `Added ${name} to ${pets[idx].name}'s profile.`);
-            loadPets();
-        }
-    }
+    if (!pets || !pets.length) return showCustomAlert('No Pets Found', 'Please add a pet before saving locations.');
+    const save = async (pet) => { await db.from('pets').update({ [type]: name }).eq('id', pet.id); showCustomAlert('Saved! 🛂', `Added ${name} to ${cleanText(pet.name, 24) || 'your pet'}'s profile.`); await loadPets(); };
+    if (pets.length === 1) return save(pets[0]);
+    pickPet(pets, 'Which pet is this for?', save);
   }
 
-  // --- BOOT ---
-  checkUser();
+  // =====================================================================
+  //  MY REPORTS & CONNECTIONS & ALERTS
+  // =====================================================================
+  function toggleUserReports() {
+      showUserHistory = !showUserHistory;
+      const btn = document.getElementById('user-history-btn');
+      btn.textContent = showUserHistory ? "View Pending" : "View History";
+      loadMyReports();
+  }
 
+  async function loadMyReports() {
+    if (!currentUser) return;
+    let query = db.from('map_reports').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+    if (!showUserHistory) query = query.eq('status', 'pending');
+    else query = query.neq('status', 'pending');
+
+    const { data: reports, error } = await query;
+    const panel = document.getElementById('my-reports-panel');
+    const list = document.getElementById('my-reports-list');
+    if (!panel || !list) return;
+    if (error || !reports || reports.length === 0) { panel.style.display = 'none'; return; }
+
+    panel.style.display = 'block';
+    let html = '';
+    reports.forEach(r => {
+        let badgeColor = '#F59E0B'; let badgeText = 'Pending';
+        if (r.status === 'approved') { badgeColor = '#10B981'; badgeText = 'Approved (+5 🪙)'; }
+        if (r.status === 'rejected') { badgeColor = '#EF4444'; badgeText = 'Rejected'; }
+        let feedbackHTML = r.admin_feedback ? `<div style="font-size: 11px; color: #64748B; margin-top: 6px; font-style: italic;">💬 Admin: "${esc(r.admin_feedback)}"</div>` : '';
+        html += `
+            <div style="background: white; padding: 10px 12px; border-radius: 8px; border: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <div>
+                    <div style="font-size: 13px; font-weight: 800; color: #1E293B;">${esc(r.place_name)}</div>
+                    <div style="font-size: 10px; color: #64748B; margin-top: 2px;">${esc(r.report_type.toUpperCase())} • ${new Date(r.created_at).toLocaleDateString()}</div>
+                    ${feedbackHTML}
+                </div>
+                <span style="background: ${badgeColor}20; color: ${badgeColor}; padding: 4px 8px; border-radius: 99px; font-size: 10px; font-weight: 800; white-space: nowrap;">${badgeText}</span>
+            </div>`;
+    });
+    list.innerHTML = html;
+  }
+
+  async function loadConnectionRequests() {
+    if (!currentUser) return;
+    const { data: requests, error } = await db.from('connect_requests')
+        .select('*')
+        .or(`receiver_id.eq.${currentUser.id},sender_id.eq.${currentUser.id}`)
+        .in('status', ['pending', 'accepted']);
+
+    const panel = document.getElementById('requests-panel');
+    const list = document.getElementById('connection-requests-list');
+    if (!panel || !list) return;
+    if (error || !requests || requests.length === 0) { panel.style.display = 'none'; return; }
+
+    panel.style.display = 'block';
+    let html = '';
+    for (const req of requests) {
+        const { data: sender } = await db.from('profiles').select('email').eq('id', req.sender_id).single();
+        const { data: ping } = await db.from('active_pings').select('pet_name, place_name').eq('id', req.ping_id).single();
+        const senderName = sender ? sender.email.split('@')[0] : 'A buddy';
+        const petName = ping ? ping.pet_name : 'their pet';
+        const place = ping ? ping.place_name : 'the park';
+
+        if (req.status === 'pending') {
+            const isHost = currentUser.id === req.receiver_id;
+            if (isHost) {
+                html += `<div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div><div style="font-size: 14px; font-weight: 800; color: #1E293B;">${esc(senderName)}</div>
+                        <div style="font-size: 12px; color: #64748B; margin-top: 2px;">wants to meet ${esc(petName)} at ${esc(place)}</div></div>
+                        <div style="display:flex; gap:6px;">
+                            <button onclick="acceptRequest('${req.id}')" style="background: #10B981; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: 800; cursor: pointer; font-size: 12px;">Accept</button>
+                            <button onclick="declineRequest('${req.id}')" style="background: #EF4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: 800; cursor: pointer; font-size: 12px;">Decline</button>
+                        </div></div>`;
+            } else {
+                html += `<div style="background: #F8FAFC; padding: 12px; border-radius: 8px; border: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div><div style="font-size: 14px; font-weight: 800; color: #1E293B;">To: ${esc(petName)}</div>
+                        <div style="font-size: 12px; color: #64748B; margin-top: 2px;">Waiting for the host to accept...</div></div>
+                        <div style="font-size: 20px;">⏳</div></div>`;
+            }
+        } else if (req.status === 'accepted') {
+            const isHost = currentUser.id === req.receiver_id;
+            const role = isHost ? 'host' : 'seeker';
+            const reward = isHost ? '+20' : '+10';
+            const alreadyConfirmed = isHost ? req.host_confirmed_at : req.seeker_confirmed_at;
+            html += `<div style="background: #F0FDF4; padding: 12px; border-radius: 8px; border: 1px solid #86EFAC; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;">
+                    <div><div style="font-size: 14px; font-weight: 800; color: #15803D;">Connected with ${esc(senderName)}! 🎉</div>
+                    <div style="font-size: 12px; color: #166534; margin-top: 4px;">Meet up, then click below to earn ${reward} Buddycoins!</div></div>
+                    <button onclick="verifyGPS('${req.id}', '${role}')" style="background: ${alreadyConfirmed ? '#CBD5E1' : '#10B981'}; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 800; cursor: pointer; font-size: 12px;" ${alreadyConfirmed ? 'disabled' : ''}>${alreadyConfirmed ? '⏳ Waiting for the other user...' : `📍 Confirm Meetup ${reward} 🪙`}</button></div>`;
+        }
+    }
+    list.innerHTML = html;
+  }
+
+  async function acceptRequest(requestId) {
+      await db.from('connect_requests').update({ status: 'accepted' }).eq('id', requestId);
+      loadConnectionRequests();
+  }
+  async function declineRequest(requestId) {
+      await db.from('connect_requests').update({ status: 'declined' }).eq('id', requestId);
+      loadConnectionRequests();
+  }
+  async function verifyGPS(requestId, role) {
+      if (!navigator.geolocation) return alert("Your browser does not support GPS.");
+      alert("Getting your location. Please allow the browser permission request...");
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { data, error } = await db.rpc('verify_meetup_gps', { p_request_id: requestId, p_role: role, p_lat: pos.coords.latitude, p_lng: pos.coords.longitude });
+          if (error) return alert("Error: " + error.message);
+          alert(data.message);
+          if (data.success && data.message.includes('awarded')) {
+            if (window.userProfile) { window.userProfile.tokens += (role === 'host' ? 20 : 10); document.getElementById('token-balance').textContent = window.userProfile.tokens; }
+          }
+          loadConnectionRequests();
+        },
+        (err) => alert("Could not get your location. Please enable GPS permissions in your browser."),
+        { enableHighAccuracy: true }
+      );
+  }
+
+  async function loadBuddyAlerts() {
+      if (!currentUser) return;
+      const { data: alerts, error } = await db.from('notifications').select('*').eq('user_id', currentUser.id).eq('is_read', false).order('created_at', { ascending: false });
+      const panel = document.getElementById('buddy-alerts-panel');
+      const list = document.getElementById('buddy-alerts-list');
+      if (!panel || !list) return;
+      if (error || !alerts || alerts.length === 0) { panel.style.display = 'none'; return; }
+
+      panel.style.display = 'block';
+      let html = '';
+      alerts.forEach(alert => {
+        html += `<div style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #FEF3C7; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-size: 12px; font-weight: 600; color: #92400E;">${esc(alert.message)}</div>
+                <button onclick="markAlertRead('${alert.id}')" style="background: #F59E0B; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; cursor: pointer;">Dismiss</button></div>`;
+      });
+      list.innerHTML = html;
+  }
+  async function markAlertRead(alertId) {
+      await db.from('notifications').update({ is_read: true }).eq('id', alertId);
+      loadBuddyAlerts();
+  }
+
+  async function savePhoneNumber() {
+      const phoneInput = document.getElementById('user-phone-input');
+      const phone = phoneInput.value.trim();
+      if (!phone || phone.length < 8) return showCustomAlert("Invalid Number", "Please enter a valid WhatsApp number (e.g. +65 9123 4567).");
+      const btn = event.target; btn.textContent = "Saving..."; btn.disabled = true;
+      const { error } = await db.from('profiles').update({ phone_number: phone }).eq('id', currentUser.id);
+      btn.textContent = "Save"; btn.disabled = false;
+      if (error) showCustomAlert("Error", error.message);
+      else { showCustomAlert("Success! 📱", "Your WhatsApp number has been saved. You will now receive Buddy Alerts!"); document.getElementById('whatsapp-panel').style.display = 'none'; }
+  }
+
+  function updateUpgradeReminder(coins) {
+      const reminder = document.getElementById('upgrade-reminder');
+      if (!reminder) return;
+      if (coins >= 100) { reminder.textContent = "🎉 You have unlocked Silver!"; reminder.style.color = "#10B981"; }
+      else { const needed = 100 - coins; reminder.textContent = `✨ ${needed} more Buddycoins to upgrade!`; }
+  }
+
+  // =====================================================================
+  //  REFERRAL & INVITE FUNCTIONS
+  // =====================================================================
+  window.copyReferralLink = function() {
+      if (!currentUser) return;
+      const link = window.location.origin + '/index.html?ref=' + currentUser.id;
+      const done = () => {
+          document.getElementById('invite-modal').classList.add('hidden');
+          showCustomAlert("Sign Up Link Copied! 🎁", "Send this link to friends. When they sign up, you'll get +50 Buddycoins!");
+      };
+      const fallback = () => {
+          const ta = document.createElement('textarea'); ta.value = link; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); done(); } catch (e) { showCustomAlert("Copy this link", link); }
+          document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(link).then(done).catch(fallback); } else { fallback(); }
+  };
+
+  window.showInviteModal = function() {
+      if (!currentUser) return;
+      const link = window.location.origin + window.location.pathname + '?ref=' + currentUser.id;
+      const linkInput = document.getElementById('invite-link-input');
+      if (linkInput) linkInput.value = link;
+      const qrContainer = document.getElementById('invite-qr');
+      if (qrContainer) {
+          qrContainer.innerHTML = '';
+          new QRCode(qrContainer, { text: link, width: 150, height: 150, colorDark: '#111111', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+      }
+      document.getElementById('invite-modal').classList.remove('hidden');
+  };
+
+  function pickPet(pets, title, onPick) {
+    const modal = document.getElementById('picker-modal');
+    const list = document.getElementById('picker-list');
+    document.getElementById('picker-title').textContent = title;
+    list.innerHTML = '';
+    pets.forEach(p => {
+      const b = document.createElement('button');
+      b.className = 'picker-btn'; b.type = 'button'; b.textContent = cleanText(p.name, 24) || 'Unnamed';
+      b.addEventListener('click', () => { modal.classList.add('hidden'); onPick(p); });
+      list.appendChild(b);
+    });
+    document.getElementById('picker-cancel').onclick = () => modal.classList.add('hidden');
+    modal.classList.remove('hidden');
+  }
+
+  function hasAccess(featureName) {
+      if (!currentUser) return false;
+      const freeFeatures = ['lost_and_found', 'base_passport'];
+      if (freeFeatures.includes(featureName)) return true;
+      const userTier = window.userProfile ? window.userProfile.tier : 'Red';
+      if (userTier === 'Gold') return true;
+      if (userTier === 'Silver' && featureName === 'pet_secretary') return true;
+      return false;
+  }
+
+  async function buyPass(featureName, cost) {
+      if (!currentUser) return;
+      if (!confirm(`Unlock this feature for 3 days for ${cost} Buddycoins?`)) return;
+      const { data, error } = await db.rpc('buy_feature_pass', { p_feature_name: featureName, p_cost: cost });
+      if (error) return showCustomAlert("Error", error.message);
+      if (data.success) {
+          showCustomAlert("Success! 🎉", "Your 3-day pass is now active!");
+          const { data: fresh } = await db.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+          if (fresh) { window.userProfile = fresh; document.getElementById('token-balance').textContent = fresh.tokens; }
+          await loadPets();
+      } else {
+          showCustomAlert("Not enough Buddycoins", data.message);
+      }
+  }
+
+  checkUser();
 </script>
 </body>
 </html>
