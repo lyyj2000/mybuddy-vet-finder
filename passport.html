@@ -670,12 +670,13 @@
     document.getElementById('lost-cancel').onclick = () => document.getElementById('lost-modal').classList.add('hidden');
     document.getElementById('lost-modal').classList.remove('hidden'); setTimeout(() => document.getElementById('lost-location').focus(), 50);
   }
-  async function submitLostReport(petId) {
   function startPinLocation() {
     document.getElementById('lost-modal').classList.add('hidden');
     alert("Tap on the map to pin the exact location where your pet was lost.");
     window.location.href = 'index.html?pick_mode=true';
 }
+
+  async function submitLostReport(petId) {
 
     const location = cleanText(document.getElementById('lost-location').value, 80), date = document.getElementById('lost-date').value;
     const phone = cleanText(document.getElementById('lost-phone').value, 20), notes = cleanText(document.getElementById('lost-notes').value, 200), reward = cleanText(document.getElementById('lost-reward').value, 20);
