@@ -213,8 +213,10 @@
     <p style="font-size:12px; color:#64748B; text-align:center; margin:0 0 6px;">This adds a LOST banner and prepares a GPS pin for the map.</p>
     <label class="lost-label" for="lost-location">Last seen location</label>
     <input type="text" id="lost-location" placeholder="e.g. Tampines Ave 5" maxlength="80">
-    <button type="button" id="lost-geo-btn" class="geo-btn" onclick="getGeoLocation()">📍 Tag Current GPS Location</button>
-    <button type="button" id="lost-pin-btn" class="geo-btn" onclick="startPinLocation()" style="margin-top: -5px; margin-bottom: 10px; border-color: #F59E0B !important; color: #D97706 !important; background: #FFFBEB !important;">🗺️ Or Pin Exact Location on Map</button>    
+<div style="display: flex; gap: 8px; margin-bottom: 12px; width: 100%;">
+    <button type="button" id="lost-geo-btn" class="geo-btn" onclick="getGeoLocation()" style="flex: 1; margin: 0; padding: 8px 4px; font-size: 11px; height: auto; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2;">📍 Tag GPS</button>
+    <button type="button" id="lost-pin-btn" class="geo-btn" onclick="startPinLocation()" style="flex: 1; margin: 0; padding: 8px 4px; font-size: 11px; height: auto; background: #FFFBEB !important; color: #D97706 !important; border-color: #F59E0B !important; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.2;">🗺️ Pin on Map</button>
+</div>
     <div style="display:flex; gap:10px;">
       <div style="flex:1;"><label class="lost-label" for="lost-date">Date</label><input type="date" id="lost-date"></div>
       <div style="flex:1;"><label class="lost-label" for="lost-reward">Reward (Optional)</label><input type="text" id="lost-reward" placeholder="e.g. $100" maxlength="20"></div>
