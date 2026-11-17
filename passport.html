@@ -214,6 +214,7 @@
     <label class="lost-label" for="lost-location">Last seen location</label>
     <input type="text" id="lost-location" placeholder="e.g. Tampines Ave 5" maxlength="80">
     <button type="button" id="lost-geo-btn" class="geo-btn" onclick="getGeoLocation()">📍 Tag Current GPS Location</button>
+    <button type="button" id="lost-pin-btn" class="geo-btn" onclick="startPinLocation()" style="margin-top: -5px; margin-bottom: 10px; border-color: #F59E0B !important; color: #D97706 !important; background: #FFFBEB !important;">🗺️ Or Pin Exact Location on Map</button>    
     <div style="display:flex; gap:10px;">
       <div style="flex:1;"><label class="lost-label" for="lost-date">Date</label><input type="date" id="lost-date"></div>
       <div style="flex:1;"><label class="lost-label" for="lost-reward">Reward (Optional)</label><input type="text" id="lost-reward" placeholder="e.g. $100" maxlength="20"></div>
@@ -668,11 +669,18 @@
     document.getElementById('lost-modal').classList.remove('hidden'); setTimeout(() => document.getElementById('lost-location').focus(), 50);
   }
   async function submitLostReport(petId) {
+  function startPinLocation() {
+    document.getElementById('lost-modal').classList.add('hidden');
+    alert("Tap on the map to pin the exact location where your pet was lost.");
+    window.location.href = 'index.html?pick_mode=true';
+}
+
     const location = cleanText(document.getElementById('lost-location').value, 80), date = document.getElementById('lost-date').value;
     const phone = cleanText(document.getElementById('lost-phone').value, 20), notes = cleanText(document.getElementById('lost-notes').value, 200), reward = cleanText(document.getElementById('lost-reward').value, 20);
     if (!location) return showCustomAlert('Location required', 'Where was your pet last seen?');
     if (!date) return showCustomAlert('Date required', 'When was your pet last seen?');
     if (!phone) return showCustomAlert('Phone required', 'Please add a phone number.');
+    if (!lostLat || !lostLng) return showCustomAlert('Pin required', 'Please tag your current GPS or pin the exact location on the map.');
     const btn = document.getElementById('lost-submit'); btn.disabled = true; btn.textContent = 'Saving…';
     const { error } = await db.from('pets').update({ is_lost: true, lost_last_seen: location, lost_date: date, lost_contact_phone: phone, lost_notes: notes || null, lost_reward: reward || null, lost_lat: lostLat, lost_lng: lostLng, found_date: null }).eq('id', petId);
     btn.disabled = false; btn.textContent = '🚨 I Lost MyBuddy';
@@ -1309,7 +1317,23 @@
       }
   }
 
-  checkUser();
+// Check if we just returned from picking a location on the map
+if (new URLSearchParams(window.location.search).get('restore_lost_modal') === 'true') {
+    lostLat = parseFloat(localStorage.getItem('picked_lost_lat'));
+    lostLng = parseFloat(localStorage.getItem('picked_lost_lng'));
+    localStorage.removeItem('picked_lost_lat');
+    localStorage.removeItem('picked_lost_lng');
+    
+    // Clean up URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+    
+    setTimeout(() => {
+        showCustomAlert("Location Pinned! 📍", "Click 'I Lost MyBuddy' again to finish your report. Your GPS is already saved.");
+    }, 1000);
+}
+
+checkUser();
+
 </script>
 </body>
 </html>

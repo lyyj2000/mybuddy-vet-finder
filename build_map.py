@@ -705,7 +705,7 @@ input[type=range] { width: 100%; accent-color: #1A1A1A; }
     width: 36px; height: 36px; border: 3px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     border-radius: 50%; background: #3882F6; color: #fff; font-size: 24px; font-weight: bold;
     display: flex; align-items: center; justify-content: center; cursor: pointer;
-    z-index: 10000 !important; 
+    z-index: 9999999 !important; 
     position: relative !important;
 }
 
@@ -947,8 +947,8 @@ input[type=range] { width: 100%; accent-color: #1A1A1A; }
     animation: pulse-ring 1.5s infinite ease-in-out;
 }
 .lost-pet-img {
-    width: 46px;
-    height: 46px;
+    width: 38px; /* Shrunk from 46px */
+    height: 38px;
     z-index: 2;
     position: relative;
     filter: drop-shadow(0 4px 8px rgba(0,0,0,0.6));
@@ -2048,9 +2048,9 @@ async function loadLostPets() {
                         <img src="lost_found.png" class="lost-pet-img">
                     </div>
                 `,
-                iconSize: [60, 60],
-                iconAnchor: [30, 30],
-                popupAnchor: [0, -30]
+                iconSize: [44, 44], // Shrunk from 60x60
+                iconAnchor: [22, 22], // Shrunk
+                popupAnchor: [0, -22]
             });
 
             let marker = lostPetsRegistry.get(pet.id);
