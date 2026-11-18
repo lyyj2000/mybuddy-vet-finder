@@ -222,7 +222,6 @@
     <input type="hidden" id="lost-lng" name="lost_lng">
 
     <div style="display:flex; gap:10px;">
-    <div style="display:flex; gap:10px;">
       <div style="flex:1;"><label class="lost-label" for="lost-date">Date</label><input type="date" id="lost-date"></div>
       <div style="flex:1;"><label class="lost-label" for="lost-reward">Reward (Optional)</label><input type="text" id="lost-reward" placeholder="e.g. $100" maxlength="20"></div>
     </div>
@@ -651,7 +650,8 @@
   // =====================================================================
   //  LOST & FOUND
   // =====================================================================
-  let lostLat = null, lostLng = null;
+let lostLat = null, lostLng = null;
+let pendingLostPetId = null;
   window.getGeoLocation = function() {
     const btn = document.getElementById('lost-geo-btn');
     if (!navigator.geolocation) return showCustomAlert('Not Supported', 'Geolocation is not supported by your browser.');
@@ -664,55 +664,184 @@
       }
     );
   };
-  function openLostModal(petId) {
-    const pet = petsCache.find(p => String(p.id) === String(petId)); if (!pet) return;
+function openLostModal(petId) {
+    pendingLostPetId = String(petId);
+
+    const pet = petsCache.find(p => String(p.id) === String(petId));
+    if (!pet) return;
     document.getElementById('lost-modal-title').textContent = '🚨 I Lost ' + (cleanText(pet.name, 24) || 'MyBuddy');
     document.getElementById('lost-location').value = ''; document.getElementById('lost-date').value = new Date().toISOString().slice(0, 10);
     document.getElementById('lost-phone').value = ''; document.getElementById('lost-notes').value = ''; document.getElementById('lost-reward').value = '';
     lostLat = null; lostLng = null;
     const geoBtn = document.getElementById('lost-geo-btn'); geoBtn.textContent = '📍 Tag Current GPS Location'; geoBtn.style.background = ''; geoBtn.style.color = ''; geoBtn.style.borderColor = '';
+    const pinBtn = document.getElementById('lost-pin-btn');
+    pinBtn.textContent = '🗺️ Pin on Map';
     document.getElementById('lost-submit').onclick = () => submitLostReport(petId);
     document.getElementById('lost-cancel').onclick = () => document.getElementById('lost-modal').classList.add('hidden');
     document.getElementById('lost-modal').classList.remove('hidden'); setTimeout(() => document.getElementById('lost-location').focus(), 50);
   }
-  function startPinLocation() {
+function startPinLocation() {
+
+    if (!pendingLostPetId) {
+        showCustomAlert(
+            'Pet Not Selected',
+            'Please reopen Lost & Found for the pet you want to report.'
+        );
+        return;
+    }
+
+    // Preserve the current Lost & Found form
+    const pendingForm = {
+        petId: pendingLostPetId,
+        location: document.getElementById('lost-location').value,
+        date: document.getElementById('lost-date').value,
+        phone: document.getElementById('lost-phone').value,
+        notes: document.getElementById('lost-notes').value,
+        reward: document.getElementById('lost-reward').value
+    };
+
+    localStorage.setItem(
+        'mybuddy_lost_pending_form',
+        JSON.stringify(pendingForm)
+    );
+
+    // Close the modal before opening the map
     document.getElementById('lost-modal').classList.add('hidden');
-    alert("Tap on the map to pin the exact location where your pet was lost.");
+
+    // Open map in Lost & Found pin-selection mode
     window.location.href = 'index.html?pick_mode=true';
 }
 
+
 async function submitLostReport(petId) {
 
-    const location = cleanText(document.getElementById('lost-location').value, 80), date = document.getElementById('lost-date').value;
-    const phone = cleanText(document.getElementById('lost-phone').value, 20), notes = cleanText(document.getElementById('lost-notes').value, 200), reward = cleanText(document.getElementById('lost-reward').value, 20);
-    if (!location) return showCustomAlert('Location required', 'Where was your pet last seen?');
-    if (!date) return showCustomAlert('Date required', 'When was your pet last seen?');
-    if (!phone) return showCustomAlert('Phone required', 'Please add a phone number.');
-    if (!lostLat || !lostLng) return showCustomAlert('Pin required', 'Please tag your current GPS or pin the exact location on the map.');
-    const btn = document.getElementById('lost-submit'); btn.disabled = true; btn.textContent = 'Saving…';
-  const { error } = await db.from('pets').update({ is_lost: true, lost_last_seen: location, lost_date: date, lost_contact_phone: phone, lost_notes: notes || null, lost_lat: lostLat, lost_lng: lostLng }).eq('id', petId);
-    btn.disabled = false; btn.textContent = '🚨 I Lost MyBuddy';
-    if (error) return showCustomAlert('Error', error.message);
+    const location = cleanText(document.getElementById('lost-location').value, 80);
+    const date = document.getElementById('lost-date').value;
+    const phone = cleanText(document.getElementById('lost-phone').value, 20);
+    const notes = cleanText(document.getElementById('lost-notes').value, 200);
+    const reward = cleanText(document.getElementById('lost-reward').value, 20);
+
+    if (!location) {
+        return showCustomAlert('Location required', 'Where was your pet last seen?');
+    }
+
+    if (!date) {
+        return showCustomAlert('Date required', 'When was your pet last seen?');
+    }
+
+    if (!phone) {
+        return showCustomAlert('Phone required', 'Please add a phone number.');
+    }
+
+    if (lostLat === null || lostLng === null) {
+        return showCustomAlert(
+            'Pin Required',
+            'Please tag your GPS location or pin the exact location on the map.'
+        );
+    }
+
+    const btn = document.getElementById('lost-submit');
+
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
 
     try {
-        const { data: pet } = await db.from('pets').select('name').eq('id', petId).single();
-        const petName = pet ? pet.name : 'A pet';
-        const { data: pastConnections } = await db.from('connect_requests').select('sender_id, receiver_id').or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`).in('status', ['accepted', 'completed']);
-        if (pastConnections && pastConnections.length > 0) {
-            const buddyIds = pastConnections.map(conn => conn.sender_id === currentUser.id ? conn.receiver_id : conn.sender_id);
-            const uniqueBuddyIds = [...new Set(buddyIds)];
-            const notifications = uniqueBuddyIds.map(buddyId => ({
-                user_id: buddyId,
-                message: `🚨 URGENT: ${petName} is lost! Last seen at ${location}. Open the Map to help search!`
-            }));
-            await db.from('notifications').insert(notifications);
-        }
-    } catch (err) { console.error("Failed to send lost alerts:", err); }
 
-    document.getElementById('lost-modal').classList.add('hidden'); 
-    showCustomAlert('Pet marked as lost 🚨', 'Your passport now shows a LOST banner. Your buddies have been alerted!'); 
-    await loadPets();
-  }
+        const { data: updatedPet, error } = await db
+            .from('pets')
+            .update({
+                is_lost: true,
+                lost_last_seen: location,
+                lost_date: date,
+                lost_contact_phone: phone,
+                lost_notes: notes || null,
+                lost_reward: reward || null,
+                lost_lat: lostLat,
+                lost_lng: lostLng
+            })
+            .eq('id', petId)
+            .select('id, is_lost, lost_lat, lost_lng')
+            .maybeSingle();
+
+        if (error) {
+            throw error;
+        }
+
+        // IMPORTANT: Confirm that Supabase actually updated a row.
+        if (!updatedPet) {
+            throw new Error(
+                'No pet record was updated. Please check your login and database permissions.'
+            );
+        }
+
+        if (!updatedPet.is_lost) {
+            throw new Error('The database did not confirm the LOST status.');
+        }
+
+        // Notify existing buddies. Notification failure
+        // must not undo a successful Lost Report.
+        try {
+
+            const pet = petsCache.find(
+                p => String(p.id) === String(petId)
+            );
+
+            const petName = pet ? pet.name : 'A pet';
+
+            const { data: pastConnections, error: connectionError } = await db
+                .from('connect_requests')
+                .select('sender_id, receiver_id')
+                .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+                .in('status', ['accepted', 'completed']);
+
+            if (!connectionError && pastConnections?.length) {
+
+                const buddyIds = [...new Set(
+                    pastConnections.map(conn =>
+                        conn.sender_id === currentUser.id
+                            ? conn.receiver_id
+                            : conn.sender_id
+                    )
+                )];
+
+                const notifications = buddyIds.map(buddyId => ({
+                    user_id: buddyId,
+                    message: `🚨 URGENT: ${petName} is lost! Last seen at ${location}. Open the Map to help search!`
+                }));
+
+                await db.from('notifications').insert(notifications);
+            }
+
+        } catch (notificationError) {
+            console.error('Lost pet notification error:', notificationError);
+        }
+
+        document.getElementById('lost-modal').classList.add('hidden');
+
+        showCustomAlert(
+            'Pet marked as lost 🚨',
+            'Your Lost Report has been saved successfully. Your passport now shows a LOST banner.'
+        );
+
+        await loadPets();
+
+    } catch (error) {
+
+        console.error('Lost Report submission failed:', error);
+
+        showCustomAlert(
+            'Submission Failed',
+            error.message || 'Unable to save your Lost Report. Please try again.'
+        );
+
+    } finally {
+
+        btn.disabled = false;
+        btn.textContent = '🚨 I Lost MyBuddy';
+
+    }
+}
+
   function markFound(petId) {
     const pet = petsCache.find(p => String(p.id) === String(petId));
     showAlert({ title: 'Mark as found? 🎉', msg: 'This removes the LOST banner from ' + (pet ? (cleanText(pet.name, 24) || 'the pet') + "'s" : 'the') + ' passport.', okLabel: 'Yes, found!', cancelLabel: 'Cancel',
@@ -910,6 +1039,7 @@ async function submitLostReport(petId) {
       const card = document.getElementById('pet-card-' + pet.id);
       if (card) { drawQRCodes(card, pet); drawBarcode(card, pet); }
     });
+    restoreLostModalAfterMapPick();    
   }
 
   // =====================================================================
@@ -1096,37 +1226,125 @@ async function submitLostReport(petId) {
 // ==========================================
 // LOST & FOUND: RESTORE MODAL AFTER MAP PICK
 // ==========================================
-document.addEventListener('DOMContentLoaded', function () {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('restore_lost_modal') !== 'true') return;
 
-  const raw = localStorage.getItem('mybuddy_lost_pick');
-  let coords = null;
-  if (raw) {
-    try { coords = JSON.parse(raw); } catch (err) { console.warn('Bad pick data', err); }
-  }
+function restoreLostModalAfterMapPick() {
 
-  // 1) Open the Lost Pet modal directly by removing the 'hidden' class
-  const modal = document.getElementById('lost-modal');
-  if (modal) {
-    modal.classList.remove('hidden');
-  }
+    const params = new URLSearchParams(window.location.search);
 
-  // 2) Populate global lat/lng variables
-  if (coords) {
-    lostLat = coords.lat; // 👈 Sets the global variable for submit
-    lostLng = coords.lng; // 👈 Sets the global variable for submit
+    if (params.get('restore_lost_modal') !== 'true') return;
 
-    const pinBtn = document.getElementById('lost-pin-btn'); // 👈 Your actual button ID
-    if (pinBtn) {
-      pinBtn.textContent = '✅ Location set — tap to change';
+    // Retrieve the saved form
+    const pendingRaw = localStorage.getItem(
+        'mybuddy_lost_pending_form'
+    );
+
+    if (!pendingRaw) {
+        showCustomAlert(
+            'Unable to Restore',
+            'Please reopen Lost & Found and try again.'
+        );
+
+        window.history.replaceState({}, '', 'passport.html');
+        return;
     }
-  }
 
-  // 3) Cleanup so a refresh doesn't re-trigger
-  localStorage.removeItem('mybuddy_lost_pick');
-  window.history.replaceState({}, '', 'passport.html');
-});
+    let pending;
+
+    try {
+        pending = JSON.parse(pendingRaw);
+    } catch (err) {
+        console.error('Lost form restore error:', err);
+        return;
+    }
+
+    // Confirm the original pet still exists
+    const petExists = petsCache.some(
+        p => String(p.id) === String(pending.petId)
+    );
+
+    if (!petExists) {
+        showCustomAlert(
+            'Pet Not Found',
+            'Please select your pet again.'
+        );
+
+        localStorage.removeItem('mybuddy_lost_pending_form');
+        localStorage.removeItem('mybuddy_lost_pick');
+
+        window.history.replaceState({}, '', 'passport.html');
+        return;
+    }
+
+    // Reopen the correct pet's form.
+    // This also reconnects the Submit button to the correct pet ID.
+    openLostModal(pending.petId);
+
+    // Restore all previously entered form information
+    document.getElementById('lost-location').value =
+        pending.location || '';
+
+    document.getElementById('lost-date').value =
+        pending.date || '';
+
+    document.getElementById('lost-phone').value =
+        pending.phone || '';
+
+    document.getElementById('lost-notes').value =
+        pending.notes || '';
+
+    document.getElementById('lost-reward').value =
+        pending.reward || '';
+
+    // Retrieve the selected map coordinates
+    const coordsRaw = localStorage.getItem('mybuddy_lost_pick');
+
+    let coords = null;
+
+    if (coordsRaw) {
+        try {
+            coords = JSON.parse(coordsRaw);
+        } catch (err) {
+            console.warn('Invalid map coordinates:', err);
+        }
+    }
+
+    // Restore coordinates
+    if (
+        coords &&
+        Number.isFinite(Number(coords.lat)) &&
+        Number.isFinite(Number(coords.lng))
+    ) {
+        lostLat = Number(coords.lat);
+        lostLng = Number(coords.lng);
+
+        document.getElementById('lost-lat').value = lostLat;
+        document.getElementById('lost-lng').value = lostLng;
+
+        const pinBtn = document.getElementById('lost-pin-btn');
+
+        pinBtn.textContent = '✅ Location set — tap to change';
+
+        pinBtn.style.background = '#F0FDF4';
+        pinBtn.style.color = '#15803D';
+        pinBtn.style.borderColor = '#86EFAC';
+
+    } else {
+
+        lostLat = null;
+        lostLng = null;
+
+        document.getElementById('lost-lat').value = '';
+        document.getElementById('lost-lng').value = '';
+    }
+
+    // Remove temporary data after restoration
+    localStorage.removeItem('mybuddy_lost_pick');
+    localStorage.removeItem('mybuddy_lost_pending_form');
+
+    // Clean the URL
+    window.history.replaceState({}, '', 'passport.html');
+}
+
 
   // =====================================================================
   //  MY REPORTS & CONNECTIONS & ALERTS
@@ -1359,20 +1577,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
   }
 
-// Check if we just returned from picking a location on the map
-if (new URLSearchParams(window.location.search).get('restore_lost_modal') === 'true') {
-    lostLat = parseFloat(localStorage.getItem('picked_lost_lat'));
-    lostLng = parseFloat(localStorage.getItem('picked_lost_lng'));
-    localStorage.removeItem('picked_lost_lat');
-    localStorage.removeItem('picked_lost_lng');
-    
-    // Clean up URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-    
-    setTimeout(() => {
-        showCustomAlert("Location Pinned! 📍", "Click 'I Lost MyBuddy' again to finish your report. Your GPS is already saved.");
-    }, 1000);
-}
+
 
 checkUser();
 

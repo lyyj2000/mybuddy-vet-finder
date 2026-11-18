@@ -1637,24 +1637,81 @@ if (unresolved) console.log("Unresolved coords: " + unresolved);
         });
     }
 
+
 function initLocation() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      if (pos.coords.latitude > 1.1 && pos.coords.latitude < 1.5 && pos.coords.longitude > 103.5 && pos.coords.longitude < 104.2) {
-        const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
-        updateMapCentre(ll);
-        map.setView(ll, 14);
-      }
-    },
-    (err) => { console.log("Location permission denied."); },
-    { timeout: 5000, maximumAge: 600000 }
-  );
+
+    if (!navigator.geolocation) {
+        alert("Your browser does not support GPS location.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+
+        function(pos) {
+
+            if (
+                pos.coords.latitude > 1.1 &&
+                pos.coords.latitude < 1.5 &&
+                pos.coords.longitude > 103.5 &&
+                pos.coords.longitude < 104.2
+            ) {
+
+                const ll = L.latLng(
+                    pos.coords.latitude,
+                    pos.coords.longitude
+                );
+
+                updateMapCentre(ll);
+                map.setView(ll, 14);
+            }
+
+        },
+
+        function(err) {
+
+            console.warn("GPS location error:", err.message);
+
+            if (err.code === 1) {
+                alert("Location access is blocked. Please check Chrome Site Settings.");
+            } else if (err.code === 2) {
+                alert("Your current location could not be determined.");
+            } else if (err.code === 3) {
+                alert("GPS request timed out. Please try again.");
+            }
+
+        },
+
+        {
+            timeout: 10000,
+            maximumAge: 600000
+        }
+    );
 }
 
-setTimeout(() => { map.invalidateSize(); }, 200);
-setTimeout(initLocation, 1000);
+// Ask before accessing the user's location
+function askToUseCurrentLocation() {
 
+    const params = new URLSearchParams(window.location.search);
+
+    // Do not interrupt Lost & Found pin selection
+    if (params.get('pick_mode') === 'true') return;
+
+    const allowGPS = window.confirm(
+        "📍 Would you like MyBuddy to use your current location?\n\n" +
+        "This helps us show nearby vets and pet-friendly places.\n\n" +
+        "Choose Cancel if you prefer not to share your location."
+    );
+
+    if (allowGPS) {
+        initLocation();
+    }
+}
+
+setTimeout(() => {
+    map.invalidateSize();
+}, 200);
+
+setTimeout(askToUseCurrentLocation, 500);
 
     // --- Rating Slider Logic ---
     var ratingSlider = document.getElementById('rating-slider');

@@ -1056,23 +1056,65 @@ if (unresolved) console.log("Unresolved coords: " + unresolved);
         });
     }
 
+
 function initLocation() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      if (pos.coords.latitude > 1.1 && pos.coords.latitude < 1.5 && pos.coords.longitude > 103.5 && pos.coords.longitude < 104.2) {
-        const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
-        updateMapCentre(ll);
-        map.setView(ll, 14);
-      }
-    },
-    (err) => { console.log("Location permission denied."); },
-    { timeout: 5000, maximumAge: 600000 }
-  );
+    if (!navigator.geolocation) {
+        alert("Your browser does not support location services.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        function(pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+
+            // Accept locations within Singapore
+            if (lat > 1.1 && lat < 1.5 && lng > 103.5 && lng < 104.2) {
+                const ll = L.latLng(lat, lng);
+                updateMapCentre(ll);
+                map.setView(ll, 14);
+            } else {
+                alert("Your detected location is outside Singapore.");
+            }
+        },
+        function(err) {
+            if (err.code === 1) {
+                alert("Location access was denied. You can enable it in Chrome Site Settings.");
+            } else if (err.code === 2) {
+                alert("Your current location could not be determined.");
+            } else if (err.code === 3) {
+                alert("GPS request timed out. Please try again.");
+            }
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        }
+    );
 }
 
-setTimeout(() => { map.invalidateSize(); }, 200);
-setTimeout(initLocation, 1000);
+// Ask the user before requesting their location on map launch
+setTimeout(function() {
+
+    const params = new URLSearchParams(window.location.search);
+
+    // Skip GPS prompt during Lost & Found pin selection
+    if (params.get('pick_mode') === 'true') return;
+    
+    const useLocation = window.confirm(
+        "Would you like MyBuddy to access your current location to show nearby pet services?"
+    );
+
+    if (useLocation) {
+        initLocation();
+    }
+}, 800);
+
+setTimeout(function() {
+    map.invalidateSize();
+}, 200);
+
 
 
     // --- Rating Slider Logic ---
@@ -1442,38 +1484,83 @@ async function loadActivePings() {
 
 // ... existing code above ...
 
+
+
 /* --- Lost & Found: Pick Location Mode --- */
+
 (function initPickMode() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('pick_mode') !== 'true') return;
 
-  // Crosshair cursor + hint banner
-  document.body.style.cursor = 'crosshair';
+    const params = new URLSearchParams(window.location.search);
 
-  const hint = document.createElement('div');
-  hint.id = 'pick-mode-hint';
-  hint.style.cssText =
-    'position:fixed;top:14px;left:50%;transform:translateX(-50%);' +
-    'background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;' +
-    'font:14px system-ui,sans-serif;z-index:99999;display:flex;gap:12px;' +
-    'align-items:center;box-shadow:0 6px 18px rgba(0,0,0,.35);';
-  hint.innerHTML =
-    '<span>📍 Tap the map to set your lost pet\'s last known location</span>' +
-    '<button id="pick-cancel" style="background:#ef4444;color:#fff;border:0;' +
-    'border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit;">Cancel</button>';
-  document.body.appendChild(hint);
+    if (params.get('pick_mode') !== 'true') return;
 
-  document.getElementById('pick-cancel').addEventListener('click', () => {
-    window.location.href = 'passport.html?restore_lost_modal=true';
-  });
+    // Enable crosshair cursor
+    document.body.style.cursor = 'crosshair';
+    map.getContainer().style.cursor = 'crosshair';
 
-  // Map click handler
-  map.on('click', function (e) {
-    const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
-    localStorage.setItem('mybuddy_lost_pick', JSON.stringify(coords));
-    window.location.href = 'passport.html?restore_lost_modal=true';
-  });
+    // Instruction banner
+    const hint = document.createElement('div');
+    hint.id = 'pick-mode-hint';
+
+    hint.style.cssText =
+        'position:fixed;top:14px;left:50%;transform:translateX(-50%);' +
+        'background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;' +
+        'font:14px system-ui,sans-serif;z-index:99999;display:flex;gap:12px;' +
+        'align-items:center;box-shadow:0 6px 18px rgba(0,0,0,.35);';
+
+    hint.innerHTML =
+        '<span id="pick-hint-text">📍 Tap the map to set your lost pet\'s last known location</span>' +
+        '<button id="pick-cancel" style="background:#ef4444;color:#fff;border:0;' +
+        'border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit;">Cancel</button>';
+
+    document.body.appendChild(hint);
+
+    // Cancel and return to Passport
+    document.getElementById('pick-cancel').addEventListener('click', function () {
+        window.location.href = 'passport.html?restore_lost_modal=true';
+    });
+
+    // Capture the first map click
+    map.once('click', function (e) {
+
+        const coords = {
+            lat: e.latlng.lat,
+            lng: e.latlng.lng
+        };
+
+        // Save selected coordinates
+        localStorage.setItem(
+            'mybuddy_lost_pick',
+            JSON.stringify(coords)
+        );
+
+        // Display a visible red confirmation pin
+        L.circleMarker(
+            [coords.lat, coords.lng],
+            {
+                radius: 10,
+                color: '#DC2626',
+                weight: 3,
+                fillColor: '#FFFFFF',
+                fillOpacity: 1
+            }
+        ).addTo(map);
+
+        // Confirm selection
+        document.getElementById('pick-hint-text').textContent =
+            '✅ Location selected! Returning to Passport...';
+
+        document.getElementById('pick-cancel').disabled = true;
+
+        // Return after confirmation
+        setTimeout(function () {
+            window.location.href = 'passport.html?restore_lost_modal=true';
+        }, 1200);
+
+    });
+
 })();
+
 
 // --- NEW LOST PETS FUNCTION ---
 // Keep track of lost pet markers
