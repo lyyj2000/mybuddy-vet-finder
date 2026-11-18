@@ -2021,11 +2021,47 @@ async function loadActivePings() {
     }
 }
 
+// ... existing code above ...
+
+/* --- Lost & Found: Pick Location Mode --- */
+(function initPickMode() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('pick_mode') !== 'true') return;
+
+  // Crosshair cursor + hint banner
+  document.body.style.cursor = 'crosshair';
+
+  const hint = document.createElement('div');
+  hint.id = 'pick-mode-hint';
+  hint.style.cssText =
+    'position:fixed;top:14px;left:50%;transform:translateX(-50%);' +
+    'background:#1e293b;color:#fff;padding:10px 16px;border-radius:10px;' +
+    'font:14px system-ui,sans-serif;z-index:99999;display:flex;gap:12px;' +
+    'align-items:center;box-shadow:0 6px 18px rgba(0,0,0,.35);';
+  hint.innerHTML =
+    '<span>📍 Tap the map to set your lost pet\'s last known location</span>' +
+    '<button id="pick-cancel" style="background:#ef4444;color:#fff;border:0;' +
+    'border-radius:6px;padding:4px 10px;cursor:pointer;font:inherit;">Cancel</button>';
+  document.body.appendChild(hint);
+
+  document.getElementById('pick-cancel').addEventListener('click', () => {
+    window.location.href = 'passport.html?restore_lost_modal=true';
+  });
+
+  // Map click handler
+  map.on('click', function (e) {
+    const coords = { lat: e.latlng.lat, lng: e.latlng.lng };
+    localStorage.setItem('mybuddy_lost_pick', JSON.stringify(coords));
+    window.location.href = 'passport.html?restore_lost_modal=true';
+  });
+})();
+
 // --- NEW LOST PETS FUNCTION ---
 // Keep track of lost pet markers
 const lostPetsRegistry = new Map();
 
 async function loadLostPets() {
+
     try {
         const { data: lostPets, error } = await supabaseClient
             .from('pets')
